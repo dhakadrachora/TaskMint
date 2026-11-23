@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, Users, Wallet, User } from "lucide-react";
+import { Sparkles, Users, Wallet, User, Instagram } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -17,6 +17,11 @@ const navItems: NavItem[] = [
     label: "Earn",
     href: "/",
     icon: Sparkles,
+  },
+  {
+    label: "Views",
+    href: "/views",
+    icon: Instagram,
   },
   {
     label: "Refer",
@@ -40,8 +45,8 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40">
-      <div className="max-w-md mx-auto bg-white/95 backdrop-blur-lg border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-3 py-1.5">
-        <div className="grid grid-cols-4 gap-1">
+      <div className="max-w-md mx-auto bg-white/95 backdrop-blur-lg border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 py-1.5">
+        <div className="grid grid-cols-5 gap-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =

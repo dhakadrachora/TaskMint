@@ -219,7 +219,6 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-$$;
 
 -- Create auth trigger
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -228,12 +227,34 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_new_user();
 
--- 6. ROW LEVEL SECURITY (RLS) POLICIES
+-- 7. SMM ORDERS TABLE (CheapSMMHub Instagram Views Integration)
+CREATE TABLE IF NOT EXISTS public.smm_orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  provider_order_id TEXT NOT NULL,
+  service_id INT NOT NULL DEFAULT 4483,
+  link TEXT NOT NULL,
+  quantity INT NOT NULL CHECK (quantity >= 1000),
+  charge_coins INT NOT NULL CHECK (charge_coins > 0),
+  charge_inr NUMERIC(10, 2) NOT NULL CHECK (charge_inr > 0),
+  status TEXT NOT NULL DEFAULT 'Pending',
+  start_count TEXT,
+  remains TEXT,
+  estimated_time TEXT DEFAULT '15 mins - 2 hours',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_smm_orders_user_id ON public.smm_orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_smm_orders_provider_order_id ON public.smm_orders(provider_order_id);
+CREATE INDEX IF NOT EXISTS idx_smm_orders_created_at ON public.smm_orders(created_at DESC);
+
+-- 8. ROW LEVEL SECURITY (RLS) POLICIES
 
 -- Enable RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.withdrawals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.smm_orders ENABLE ROW LEVEL SECURITY;
 
 -- Helper function to check if current user is an admin
 CREATE OR REPLACE FUNCTION public.is_admin()
@@ -280,3 +301,12 @@ CREATE POLICY "Admins can update withdrawals"
   ON public.withdrawals FOR UPDATE
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
+
+-- SMM Orders Policies
+CREATE POLICY "Users can view own smm orders"
+  ON public.smm_orders FOR SELECT
+  USING (auth.uid() = user_id OR public.is_admin());
+
+CREATE POLICY "Service role can manage smm orders"
+  ON public.smm_orders FOR ALL
+  USING (auth.role() = 'service_role' OR public.is_admin());

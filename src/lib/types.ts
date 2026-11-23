@@ -13,7 +13,7 @@ export interface Profile {
   created_at: string;
 }
 
-export type TransactionType = 'survey' | 'checkin' | 'referral' | 'signup_bonus' | 'withdrawal' | 'refund';
+export type TransactionType = 'survey' | 'checkin' | 'referral' | 'signup_bonus' | 'withdrawal' | 'refund' | 'smm_order';
 export type TransactionStatus = 'completed' | 'reversed' | 'pending' | 'failed';
 
 export interface Transaction {
@@ -39,6 +39,24 @@ export interface Withdrawal {
   wallet_type?: WalletType;
   created_at: string;
   profile?: Profile;
+}
+
+export type SmmOrderStatus = 'Pending' | 'In progress' | 'Completed' | 'Partial' | 'Canceled' | 'Processing';
+
+export interface SmmOrder {
+  id: string;
+  user_id: string;
+  provider_order_id: string;
+  service_id: number;
+  link: string;
+  quantity: number;
+  charge_coins: number;
+  charge_inr: number;
+  status: SmmOrderStatus | string;
+  start_count: string | null;
+  remains: string | null;
+  estimated_time: string;
+  created_at: string;
 }
 
 export interface AdminStats {
