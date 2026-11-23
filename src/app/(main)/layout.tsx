@@ -49,6 +49,7 @@ export default async function MainLayout({
           user.user_metadata?.name ||
           user.email?.split("@")[0] ||
           "User",
+        phone: user.user_metadata?.phone || null,
         avatar_url:
           user.user_metadata?.avatar_url ||
           user.user_metadata?.picture ||

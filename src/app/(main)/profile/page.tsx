@@ -20,6 +20,12 @@ import {
   LogOut,
   ChevronRight,
   ExternalLink,
+  Phone,
+  ShieldCheck,
+  ShieldAlert,
+  Save,
+  KeyRound,
+  CheckCircle2,
 } from "lucide-react";
 import { formatCoins, coinsToInr, formatInr } from "@/lib/utils";
 
@@ -29,7 +35,7 @@ interface StatsData {
 }
 
 export default function ProfilePage() {
-  const { profile } = useProfile();
+  const { profile, refreshProfile } = useProfile();
   const router = useRouter();
 
   const [stats, setStats] = useState<StatsData>({
@@ -39,6 +45,34 @@ export default function ProfilePage() {
   const [loadingStats, setLoadingStats] = useState(true);
   const [copied, setCopied] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+
+  // Account Settings Form State
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  const isGuestAccount =
+    !profile?.email ||
+    profile.email.includes("@taskmint.app") ||
+    profile.email.includes("@anonymous.supabase.co");
+
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || "");
+      setEmail(
+        profile.email && !profile.email.includes("@taskmint.app")
+          ? profile.email
+          : ""
+      );
+      setPhone(profile.phone || "");
+    }
+  }, [profile]);
 
   useEffect(() => {
     async function fetchStats() {
@@ -66,6 +100,56 @@ export default function ProfilePage() {
     } catch {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleUpdateSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSettingsMessage(null);
+
+    if (newPassword && newPassword.length < 6) {
+      setSettingsMessage({
+        type: "error",
+        text: "New password must be at least 6 characters long.",
+      });
+      return;
+    }
+
+    setSavingSettings(true);
+    try {
+      const res = await fetch("/api/profile/update-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          email: email.trim() || undefined,
+          phone: phone.trim() || undefined,
+          newPassword: newPassword.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setSettingsMessage({
+          type: "success",
+          text: "🎉 Account settings saved! Your account is now permanent & secured.",
+        });
+        setNewPassword("");
+        await refreshProfile();
+      } else {
+        setSettingsMessage({
+          type: "error",
+          text: data.error || "Failed to update account settings.",
+        });
+      }
+    } catch {
+      setSettingsMessage({
+        type: "error",
+        text: "Network error. Please try again.",
+      });
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -114,13 +198,27 @@ export default function ProfilePage() {
                 </span>
               )}
             </div>
+
             <p className="text-xs text-slate-500 truncate flex items-center gap-1 mt-0.5">
               <Mail className="h-3 w-3 text-slate-400 shrink-0" />
-              <span>{profile?.email || "Connected with Google"}</span>
+              <span>
+                {isGuestAccount ? "Quick Entry Account" : profile?.email}
+              </span>
             </p>
-            <p className="text-[10px] text-slate-400 mt-1">
-              Member since {profile?.created_at ? new Date(profile.created_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "2025"}
-            </p>
+
+            <div className="mt-1 flex items-center space-x-1.5">
+              {isGuestAccount ? (
+                <span className="inline-flex items-center space-x-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[9px] font-bold px-2 py-0.2">
+                  <ShieldAlert className="h-2.5 w-2.5 text-amber-600" />
+                  <span>Unprotected Account</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center space-x-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[9px] font-bold px-2 py-0.2">
+                  <ShieldCheck className="h-2.5 w-2.5 text-emerald-600" />
+                  <span>Account Secured</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -151,6 +249,145 @@ export default function ProfilePage() {
             )}
           </button>
         </div>
+      </div>
+
+      {/* Account & Security Settings Card */}
+      <div className="rounded-2xl bg-white border border-slate-200/90 p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center space-x-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <KeyRound className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
+                Account &amp; Security Settings
+              </h3>
+              <p className="text-[10px] text-slate-500">
+                Link email &amp; password to lock in your earnings
+              </p>
+            </div>
+          </div>
+
+          {isGuestAccount && (
+            <span className="rounded-full bg-amber-100 text-amber-900 text-[9px] font-bold px-2 py-0.5">
+              Action Required
+            </span>
+          )}
+        </div>
+
+        {isGuestAccount && (
+          <div className="rounded-xl bg-amber-50/80 border border-amber-200 p-3 text-xs text-amber-900 leading-relaxed">
+            <p className="font-bold flex items-center gap-1.5">
+              <ShieldAlert className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+              Secure your account before withdrawing!
+            </p>
+            <p className="text-[11px] text-amber-800 mt-1">
+              Add your Email, Phone &amp; set a Password below. Your <strong>{formatCoins(profile?.coins ?? 0)} Coins</strong> and referral links will permanently transfer to this login.
+            </p>
+          </div>
+        )}
+
+        {settingsMessage && (
+          <div
+            className={`rounded-xl p-3 text-xs font-bold flex items-start space-x-2 ${
+              settingsMessage.type === "success"
+                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                : "bg-red-50 text-red-700 border border-red-200"
+            }`}
+          >
+            {settingsMessage.type === "success" ? (
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+            ) : (
+              <ShieldAlert className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+            )}
+            <span>{settingsMessage.text}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleUpdateSettings} className="space-y-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Full Name
+            </label>
+            <div className="relative">
+              <User className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-3" />
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Your Full Name"
+                required
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Email Address
+            </label>
+            <div className="relative">
+              <Mail className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-3" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="yourname@gmail.com"
+                required={isGuestAccount}
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 mt-0.5">Used to log in from other devices or recover account.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Phone Number
+            </label>
+            <div className="relative">
+              <Phone className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-3" />
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="e.g. 9876543210"
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              {isGuestAccount ? "Set Password" : "Change Password (optional)"}
+            </label>
+            <div className="relative">
+              <Lock className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-3" />
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder={isGuestAccount ? "Create password (min 6 chars)" : "Leave blank to keep current"}
+                required={isGuestAccount}
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={savingSettings}
+            className="w-full flex items-center justify-center space-x-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-4 text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60"
+          >
+            {savingSettings ? (
+              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                <span>Save &amp; Protect Account</span>
+              </>
+            )}
+          </button>
+        </form>
       </div>
 
       {/* Stats Summary Grid */}
@@ -192,7 +429,7 @@ export default function ProfilePage() {
             </div>
             <div>
               <p className="text-xs font-bold text-white">Admin Management Panel</p>
-              <p className="text-[10px] text-indigo-200">Review pending payouts & user stats</p>
+              <p className="text-[10px] text-indigo-200">Review pending payouts &amp; user stats</p>
             </div>
           </div>
           <ChevronRight className="h-4 w-4 text-indigo-300" />
@@ -202,7 +439,7 @@ export default function ProfilePage() {
       {/* Support & Community Section */}
       <div className="rounded-2xl bg-white border border-slate-200/90 p-4 shadow-sm space-y-3">
         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-          Help & Community
+          Help &amp; Community
         </h3>
 
         <a
@@ -217,17 +454,17 @@ export default function ProfilePage() {
             </div>
             <div>
               <p className="text-xs font-bold text-slate-900">Official Telegram Support</p>
-              <p className="text-[10px] text-slate-500">Fast help for survey credits & UPI queries</p>
+              <p className="text-[10px] text-slate-500">Fast help for survey credits &amp; UPI queries</p>
             </div>
           </div>
           <ExternalLink className="h-4 w-4 text-[#229ED9]" />
         </a>
       </div>
 
-      {/* Legal & Policy Links (Critical for CPX approval) */}
+      {/* Legal & Policy Links */}
       <div className="rounded-2xl bg-white border border-slate-200/90 p-4 shadow-sm space-y-1">
         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
-          Legal & Compliance
+          Legal &amp; Compliance
         </h3>
 
         <Link
@@ -247,7 +484,7 @@ export default function ProfilePage() {
         >
           <div className="flex items-center space-x-2.5">
             <FileText className="h-4 w-4 text-slate-400" />
-            <span>Terms of Service & Rules</span>
+            <span>Terms of Service &amp; Rules</span>
           </div>
           <ChevronRight className="h-4 w-4 text-slate-400" />
         </Link>

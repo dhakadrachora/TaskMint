@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   email TEXT,
   full_name TEXT,
+  phone TEXT,
   avatar_url TEXT,
   coins INT NOT NULL DEFAULT 20,
   referral_code TEXT UNIQUE NOT NULL,
@@ -18,6 +19,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   is_admin BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Ensure phone column exists if table was already created
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS phone TEXT;
 
 -- Index for fast lookups
 CREATE INDEX IF NOT EXISTS idx_profiles_referral_code ON public.profiles(referral_code);
@@ -130,6 +134,7 @@ BEGIN
     id,
     email,
     full_name,
+    phone,
     avatar_url,
     coins,
     referral_code,
@@ -140,6 +145,7 @@ BEGIN
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+    COALESCE(NEW.raw_user_meta_data->>'phone', NEW.phone, NULL),
     COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', ''),
     20,
     new_ref_code,

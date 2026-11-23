@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useProfile } from "@/context/ProfileContext";
 import {
   Wallet,
@@ -13,6 +14,7 @@ import {
   Sparkles,
   ArrowDownLeft,
   ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 import {
   formatCoins,
@@ -179,6 +181,27 @@ export default function WalletPage() {
           </div>
         </div>
       </div>
+
+      {/* Account Security Notice Badge before withdrawal */}
+      {(!profile?.email || profile.email.includes("@taskmint.app") || profile.email.includes("@anonymous.supabase.co")) && (
+        <div className="rounded-2xl bg-amber-50 border border-amber-200/90 p-3.5 text-xs text-amber-900 shadow-xs flex items-start justify-between space-x-2">
+          <div className="flex items-start space-x-2.5">
+            <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-amber-950">Security Notice: Unlinked Account</p>
+              <p className="text-[11px] text-amber-800 leading-normal mt-0.5">
+                Link an Email &amp; Password in Settings so your coins and withdrawal receipts remain permanently secure.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/profile"
+            className="shrink-0 bg-amber-200/80 hover:bg-amber-200 text-amber-950 px-2.5 py-1 rounded-lg font-bold text-[10px] transition-colors"
+          >
+            Settings →
+          </Link>
+        </div>
+      )}
 
       {/* Withdrawal Form Card */}
       <div className="rounded-2xl bg-white border border-slate-200/90 p-5 shadow-sm space-y-4">

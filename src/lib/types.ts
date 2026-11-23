@@ -2,6 +2,7 @@ export interface Profile {
   id: string;
   email: string | null;
   full_name: string | null;
+  phone?: string | null;
   avatar_url: string | null;
   coins: number;
   referral_code: string;
