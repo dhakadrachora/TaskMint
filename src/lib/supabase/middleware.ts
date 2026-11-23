@@ -35,11 +35,12 @@ export async function updateSession(request: NextRequest) {
 
   // Unprotected routes
   const isLoginPage = pathname === "/login";
+  const isResetPassword = pathname.startsWith("/reset-password");
   const isPublicLegal = pathname === "/privacy" || pathname === "/terms";
   const isApiRoute = pathname.startsWith("/api");
 
   // Protect dashboard, wallet, refer, profile, admin
-  if (!user && !isLoginPage && !isPublicLegal && !isApiRoute) {
+  if (!user && !isLoginPage && !isResetPassword && !isPublicLegal && !isApiRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
