@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     const authUpdates: {
       email?: string;
       password?: string;
+      email_confirm?: boolean;
       user_metadata?: Record<string, unknown>;
     } = {
       user_metadata: {
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
 
     if (email && email.trim() && !email.includes("@taskmint.app") && email.trim() !== user.email) {
       authUpdates.email = email.trim();
+      authUpdates.email_confirm = true;
     }
 
     if (newPassword && newPassword.trim().length >= 6) {

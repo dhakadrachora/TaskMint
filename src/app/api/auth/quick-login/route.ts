@@ -39,14 +39,37 @@ export async function POST(request: Request) {
 
     // Sign in using server client to establish session cookies
     const supabase = await createClient();
+    let sessionUser = null;
+
     const { data: sessionData, error: signInError } = await supabase.auth.signInWithPassword({
       email: guestEmail,
       password: guestPassword,
     });
 
     if (signInError) {
-      console.error("Sign in after quick create failed:", signInError);
-      return NextResponse.json({ error: "Failed to create session" }, { status: 500 });
+      // If email/password login is disabled, use OTP token hash from admin link
+      const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+        type: "magiclink",
+        email: guestEmail,
+      });
+
+      if (!linkError && linkData?.properties?.hashed_token) {
+        const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: linkData.properties.hashed_token,
+          type: "email",
+        });
+
+        if (!verifyError && verifyData.user) {
+          sessionUser = verifyData.user;
+        }
+      }
+
+      if (!sessionUser) {
+        console.error("Sign in after quick create failed:", signInError, linkError);
+        return NextResponse.json({ error: "Failed to create session" }, { status: 500 });
+      }
+    } else {
+      sessionUser = sessionData.user;
     }
 
     // Ensure full_name in profiles is updated
@@ -57,7 +80,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      user: sessionData.user,
+      user: sessionUser,
     });
   } catch (error) {
     console.error("Quick login route error:", error);

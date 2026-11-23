@@ -26,12 +26,20 @@ export async function GET() {
         .digest("hex");
     }
 
+    const isConfigured = Boolean(
+      appId &&
+      secureHashSecret &&
+      /^\d+$/.test(appId) &&
+      appId !== "0" &&
+      !appId.includes("test")
+    );
+
     return NextResponse.json({
       userId: user.id,
       email: user.email || "",
       appId,
       md5Hash,
-      configured: Boolean(appId && secureHashSecret),
+      configured: isConfigured,
     });
   } catch (error: unknown) {
     console.error("CPX Hash route error:", error);

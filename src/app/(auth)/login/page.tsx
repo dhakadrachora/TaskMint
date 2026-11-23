@@ -98,8 +98,7 @@ function LoginContent() {
             .update({ full_name: trimmed })
             .eq("id", anonData.user.id);
 
-          router.push("/");
-          router.refresh();
+          window.location.href = "/";
           return;
         }
       } catch {
@@ -121,8 +120,7 @@ function LoginContent() {
         throw new Error(data.error || "Failed to start session. Please try again.");
       }
 
-      router.push("/");
-      router.refresh();
+      window.location.href = "/";
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Quick login failed";
       setError(message);
@@ -171,8 +169,7 @@ function LoginContent() {
         }
       }
 
-      router.push("/");
-      router.refresh();
+      window.location.href = "/";
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Invalid credentials";
       setError(message);
