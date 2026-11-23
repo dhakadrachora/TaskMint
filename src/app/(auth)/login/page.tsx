@@ -147,8 +147,21 @@ function LoginContent() {
       // Check if identifier is an email (contains @)
       let loginEmail = trimmedIdent;
       if (!trimmedIdent.includes("@")) {
-        // Phone number input: format to email or lookup
-        loginEmail = `${trimmedIdent.replace(/\D/g, "")}@phone.taskmint.app`;
+        // Look up registered email from phone number
+        const cleanPhone = trimmedIdent.replace(/\D/g, "");
+        const lookupRes = await fetch("/api/auth/lookup-phone", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: cleanPhone }),
+        });
+        const lookupData = await lookupRes.json();
+        if (lookupData.email) {
+          loginEmail = lookupData.email;
+        } else {
+          setError("No account found with this phone number. Please enter your registered email address.");
+          setLoading(false);
+          return;
+        }
       }
 
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -157,16 +170,7 @@ function LoginContent() {
       });
 
       if (signInError) {
-        // Try direct email if phone format failed
-        if (loginEmail !== trimmedIdent) {
-          const { error: retryError } = await supabase.auth.signInWithPassword({
-            email: trimmedIdent,
-            password,
-          });
-          if (retryError) throw signInError;
-        } else {
-          throw signInError;
-        }
+        throw signInError;
       }
 
       window.location.href = "/";
@@ -193,7 +197,7 @@ function LoginContent() {
       const supabase = createClient();
       const origin = window.location.origin;
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
-        redirectTo: `${origin}/reset-password`,
+        redirectTo: `${origin}/api/auth/callback?next=/reset-password`,
       });
 
       if (resetError) throw resetError;

@@ -1,18 +1,71 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
-import { useRouter } from "next/navigation";
-import { Lock, Sparkles, CheckCircle2, ArrowRight } from "lucide-react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { Lock, Sparkles, CheckCircle2, ArrowRight, ShieldCheck, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 function ResetPasswordForm() {
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sessionChecking, setSessionChecking] = useState(true);
+  const [hasSession, setHasSession] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    // 1. Check if PKCE code is in searchParams
+    const code = searchParams.get("code");
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error: exchangeError }) => {
+        if (!exchangeError && data?.session) {
+          setHasSession(true);
+        }
+      });
+    }
+
+    // 2. Check if hash contains access_token and refresh_token
+    if (typeof window !== "undefined" && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      if (accessToken && refreshToken) {
+        supabase.auth
+          .setSession({ access_token: accessToken, refresh_token: refreshToken })
+          .then(({ data, error: sessionErr }) => {
+            if (!sessionErr && data?.session) {
+              setHasSession(true);
+            }
+          });
+      }
+    }
+
+    // 3. Listen to auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || session) {
+        setHasSession(true);
+      }
+    });
+
+    // 4. Verify existing session
+    supabase.auth.getSession().then(({ data }) => {
+      if (data?.session) {
+        setHasSession(true);
+      }
+      setSessionChecking(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [searchParams]);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,9 +94,8 @@ function ResetPasswordForm() {
 
       setSuccess(true);
       setTimeout(() => {
-        router.push("/");
-        router.refresh();
-      }, 2000);
+        window.location.href = "/";
+      }, 1500);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to reset password";
       setError(message);
@@ -76,8 +128,9 @@ function ResetPasswordForm() {
           </div>
 
           {error && (
-            <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-xs text-red-600 font-semibold">
-              {error}
+            <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-xs text-red-600 font-semibold flex items-start space-x-2">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
 

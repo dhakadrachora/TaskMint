@@ -158,8 +158,7 @@ export default function ProfilePage() {
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
-      router.push("/login");
-      router.refresh();
+      window.location.href = "/login";
     } catch (e) {
       console.error("Logout failed:", e);
       setLoggingOut(false);
