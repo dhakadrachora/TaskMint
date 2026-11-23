@@ -54,7 +54,8 @@ export default async function MainLayout({
           user.user_metadata?.avatar_url ||
           user.user_metadata?.picture ||
           "",
-        coins: 20,
+        coins: 10,
+        commission_coins: 0,
         referral_code: newRefCode,
         is_admin: false,
       })

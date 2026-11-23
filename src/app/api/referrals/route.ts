@@ -33,6 +33,14 @@ export async function GET() {
       .select("id", { count: "exact", head: true })
       .eq("referred_by", profile.referral_code);
 
+    // Fetch invited users list
+    const { data: invitedUsers } = await admin
+      .from("profiles")
+      .select("id, full_name, created_at")
+      .eq("referred_by", profile.referral_code)
+      .order("created_at", { ascending: false })
+      .limit(30);
+
     // Fetch referral bonus transactions
     const { data: transactions, error: transError } = await admin
       .from("transactions")
@@ -51,6 +59,7 @@ export async function GET() {
     return NextResponse.json({
       referralCode: profile.referral_code,
       invitedCount: invitedCount || 0,
+      invitedUsers: invitedUsers || [],
       totalCommissionCoins,
       transactions: safeTransactions,
     });

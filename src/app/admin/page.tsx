@@ -251,6 +251,15 @@ export default function AdminPage() {
                           <span className="text-[11px] font-mono text-slate-500">
                             ({w.coins} Coins)
                           </span>
+                          {w.wallet_type === "commission" ? (
+                            <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                              Commission Wallet
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                              Earning Wallet
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs font-mono font-bold text-emerald-700 select-all mt-0.5">
                           {w.upi_id}

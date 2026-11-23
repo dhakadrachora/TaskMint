@@ -115,11 +115,42 @@ export async function POST(request: Request) {
         .update({ status: "rejected" })
         .eq("id", withdrawalId);
 
-      // 2. Refund coins atomically using increment_coins RPC
-      await admin.rpc("increment_coins", {
-        user_uuid: withdrawal.user_id,
-        coin_amount: withdrawal.coins,
-      });
+      // 2. Refund coins atomically using the matching wallet RPC
+      if (withdrawal.wallet_type === "commission") {
+        const { error: refRpcError } = await admin.rpc("increment_commission_coins", {
+          user_uuid: withdrawal.user_id,
+          coin_amount: withdrawal.coins,
+        });
+        if (refRpcError) {
+          // Fallback direct update
+          const { data: userProf } = await admin
+            .from("profiles")
+            .select("commission_coins")
+            .eq("id", withdrawal.user_id)
+            .single();
+          await admin
+            .from("profiles")
+            .update({ commission_coins: (userProf?.commission_coins || 0) + withdrawal.coins })
+            .eq("id", withdrawal.user_id);
+        }
+      } else {
+        const { error: refRpcError } = await admin.rpc("increment_coins", {
+          user_uuid: withdrawal.user_id,
+          coin_amount: withdrawal.coins,
+        });
+        if (refRpcError) {
+          // Fallback direct update
+          const { data: userProf } = await admin
+            .from("profiles")
+            .select("coins")
+            .eq("id", withdrawal.user_id)
+            .single();
+          await admin
+            .from("profiles")
+            .update({ coins: (userProf?.coins || 0) + withdrawal.coins })
+            .eq("id", withdrawal.user_id);
+        }
+      }
 
       // 3. Log refund transaction
       const transId = `refund_${withdrawal.id}_${Date.now()}`;

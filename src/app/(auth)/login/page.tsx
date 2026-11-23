@@ -249,7 +249,7 @@ function LoginContent() {
           <div className="mt-3 flex items-center space-x-2 rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-900 shadow-sm">
             <Gift className="h-4 w-4 text-amber-600 shrink-0" />
             <span>
-              Invited with code: <strong className="font-mono text-amber-800">{refCode}</strong>. 20 Coins bonus applied!
+              Invited with code: <strong className="font-mono text-amber-800">{refCode}</strong>. 10 Coins (₹1.00) bonus applied!
             </span>
           </div>
         )}

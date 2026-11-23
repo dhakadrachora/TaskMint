@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useProfile } from "@/context/ProfileContext";
 import {
   Wallet,
@@ -15,6 +16,8 @@ import {
   ArrowDownLeft,
   ShieldCheck,
   ShieldAlert,
+  Users,
+  Lock,
 } from "lucide-react";
 import {
   formatCoins,
@@ -26,8 +29,12 @@ import {
 import { Withdrawal, Transaction } from "@/lib/types";
 import confetti from "canvas-confetti";
 
-export default function WalletPage() {
-  const { profile, refreshProfile, updateCoinsLocal } = useProfile();
+function WalletContent() {
+  const searchParams = useSearchParams();
+  const { profile, refreshProfile, updateCoinsLocal, updateCommissionCoinsLocal } = useProfile();
+
+  // Dual-wallet selector for withdrawal: 'earning' | 'commission'
+  const [walletToWithdraw, setWalletToWithdraw] = useState<"earning" | "commission">("earning");
 
   const [upiId, setUpiId] = useState("");
   const [selectedCoins, setSelectedCoins] = useState<number>(500);
@@ -40,8 +47,20 @@ export default function WalletPage() {
   const [hasPriorWithdrawals, setHasPriorWithdrawals] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
-  const currentCoins = profile?.coins ?? 0;
-  const inrBalance = coinsToInr(currentCoins);
+  const earningCoins = profile?.coins ?? 0;
+  const commissionCoins = profile?.commission_coins ?? 0;
+
+  const earningInr = coinsToInr(earningCoins);
+  const commissionInr = coinsToInr(commissionCoins);
+
+  // Load URL query param for default tab
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "commission") {
+      setWalletToWithdraw("commission");
+      setSelectedCoins(1000);
+    }
+  }, [searchParams]);
 
   // Load history
   const loadHistory = async () => {
@@ -53,8 +72,7 @@ export default function WalletPage() {
         setTransactions(data.transactions || []);
         setHasPriorWithdrawals(Boolean(data.hasPriorWithdrawals));
 
-        // Adjust selected preset if first time is 500, but subsequent is 1000
-        if (data.hasPriorWithdrawals && selectedCoins < 1000) {
+        if (walletToWithdraw === "earning" && data.hasPriorWithdrawals && selectedCoins < 1000) {
           setSelectedCoins(1000);
         }
       }
@@ -69,12 +87,35 @@ export default function WalletPage() {
     loadHistory();
   }, []);
 
-  const minRequired = hasPriorWithdrawals ? 1000 : 500;
-  const minInr = hasPriorWithdrawals ? 100 : 50;
+  // When switching wallet tab, adjust selected preset
+  const handleWalletTabSwitch = (target: "earning" | "commission") => {
+    setWalletToWithdraw(target);
+    setMessage(null);
+    if (target === "commission") {
+      setSelectedCoins(1000);
+    } else {
+      setSelectedCoins(hasPriorWithdrawals ? 1000 : 500);
+    }
+  };
+
+  const isCommission = walletToWithdraw === "commission";
+  const activeCoins = isCommission ? commissionCoins : earningCoins;
+  const minRequired = isCommission ? 1000 : hasPriorWithdrawals ? 1000 : 500;
+  const minInr = isCommission ? 100 : hasPriorWithdrawals ? 100 : 50;
+  const isCommissionLocked = isCommission && commissionCoins < 1000;
+  const commissionProgress = Math.min(100, Math.round((commissionCoins / 1000) * 100));
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
+
+    if (isCommissionLocked) {
+      setMessage({
+        type: "error",
+        text: `Commission withdrawal unlocks at 1,000 Coins (₹100). You need ${1000 - commissionCoins} more coins.`,
+      });
+      return;
+    }
 
     if (!upiId.trim()) {
       setMessage({ type: "error", text: "Please enter your UPI ID." });
@@ -89,10 +130,10 @@ export default function WalletPage() {
       return;
     }
 
-    if (currentCoins < selectedCoins) {
+    if (activeCoins < selectedCoins) {
       setMessage({
         type: "error",
-        text: `Insufficient coins. You have ${formatCoins(currentCoins)} Coins, but requested ${formatCoins(selectedCoins)} Coins.`,
+        text: `Insufficient coins in your ${isCommission ? "Commission" : "Earning"} Wallet. You have ${formatCoins(activeCoins)} Coins, but requested ${formatCoins(selectedCoins)} Coins.`,
       });
       return;
     }
@@ -113,6 +154,7 @@ export default function WalletPage() {
         body: JSON.stringify({
           upiId: upiId.trim(),
           coins: selectedCoins,
+          walletType: walletToWithdraw,
         }),
       });
 
@@ -132,10 +174,15 @@ export default function WalletPage() {
 
         setMessage({
           type: "success",
-          text: `🎉 Withdrawal of ${formatInr(coinsToInr(selectedCoins))} requested! Payout will be processed to ${upiId.trim()}.`,
+          text: `🎉 Withdrawal of ${formatInr(coinsToInr(selectedCoins))} requested from ${isCommission ? "Commission" : "Earning"} Wallet! Payout will be processed to ${upiId.trim()}.`,
         });
 
-        updateCoinsLocal(-selectedCoins);
+        if (isCommission) {
+          updateCommissionCoinsLocal(-selectedCoins);
+        } else {
+          updateCoinsLocal(-selectedCoins);
+        }
+
         await refreshProfile();
         await loadHistory();
       } else {
@@ -156,28 +203,43 @@ export default function WalletPage() {
 
   return (
     <div className="space-y-4">
-      {/* Balance Summary Header */}
-      <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-5 text-white shadow-xl border border-emerald-500/20 relative overflow-hidden">
-        <div className="absolute -right-8 -bottom-8 w-36 h-36 rounded-full bg-emerald-500/10 blur-xl pointer-events-none" />
-
-        <div className="relative z-10 flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">
-              Withdrawable Balance
-            </span>
-            <div className="flex items-baseline space-x-2 mt-1">
-              <span className="text-3xl font-black text-white">
-                {formatCoins(currentCoins)}
-              </span>
-              <span className="text-xs font-bold text-amber-400">Coins</span>
+      {/* Dual-Wallet Balances Overview */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Wallet 1: Self-Earning Balance */}
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-4 text-white shadow-md border border-emerald-500/20 relative overflow-hidden">
+          <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-emerald-500/15 blur-lg pointer-events-none" />
+          <div className="relative z-10 space-y-1.5">
+            <div className="flex items-center space-x-1 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span>Earning Wallet</span>
             </div>
-            <p className="text-xs text-slate-300 mt-1">
-              ≈ <strong className="text-emerald-400 font-bold text-base">{formatInr(inrBalance)}</strong> Real Cash
+            <div className="flex items-baseline space-x-1.5">
+              <span className="text-xl font-black text-white">{formatCoins(earningCoins)}</span>
+              <span className="text-[10px] font-bold text-amber-400">Coins</span>
+            </div>
+            <p className="text-[11px] text-slate-300 font-medium">
+              ≈ <strong className="text-emerald-400">{formatInr(earningInr)}</strong>
             </p>
+            <p className="text-[9px] text-slate-400 pt-0.5">Tasks &amp; Check-ins</p>
           </div>
+        </div>
 
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-            <Wallet className="h-6 w-6" />
+        {/* Wallet 2: Commission Balance */}
+        <div className="rounded-2xl bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 p-4 text-white shadow-md border border-purple-500/20 relative overflow-hidden">
+          <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-purple-500/15 blur-lg pointer-events-none" />
+          <div className="relative z-10 space-y-1.5">
+            <div className="flex items-center space-x-1 text-[10px] font-bold text-purple-300 uppercase tracking-wider">
+              <Users className="h-3 w-3 text-purple-400" />
+              <span>Commission</span>
+            </div>
+            <div className="flex items-baseline space-x-1.5">
+              <span className="text-xl font-black text-white">{formatCoins(commissionCoins)}</span>
+              <span className="text-[10px] font-bold text-purple-300">Coins</span>
+            </div>
+            <p className="text-[11px] text-slate-300 font-medium">
+              ≈ <strong className="text-purple-300">{formatInr(commissionInr)}</strong>
+            </p>
+            <p className="text-[9px] text-purple-200/70 pt-0.5">1% Friends Commission</p>
           </div>
         </div>
       </div>
@@ -203,20 +265,72 @@ export default function WalletPage() {
         </div>
       )}
 
-      {/* Withdrawal Form Card */}
+      {/* Withdrawal Form Card with Wallet Chooser */}
       <div className="rounded-2xl bg-white border border-slate-200/90 p-5 shadow-sm space-y-4">
+        {/* Wallet Selection Tabs */}
+        <div>
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+            Choose Wallet to Withdraw From
+          </label>
+          <div className="grid grid-cols-2 bg-slate-100 p-1 rounded-xl text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => handleWalletTabSwitch("earning")}
+              className={`py-2.5 px-2 rounded-lg transition-all cursor-pointer flex items-center justify-center space-x-1.5 ${
+                walletToWithdraw === "earning"
+                  ? "bg-white text-emerald-800 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <span>Earning Wallet</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-black">
+                ₹{earningInr}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleWalletTabSwitch("commission")}
+              className={`py-2.5 px-2 rounded-lg transition-all cursor-pointer flex items-center justify-center space-x-1.5 ${
+                walletToWithdraw === "commission"
+                  ? "bg-white text-purple-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <span>Commission</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 font-black">
+                ₹{commissionInr}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Header Rule Indicator */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center space-x-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+            <div
+              className={`flex h-7 w-7 items-center justify-center rounded-lg ${
+                isCommission ? "bg-purple-100 text-purple-700" : "bg-emerald-100 text-emerald-700"
+              }`}
+            >
               <ArrowUpRight className="h-4 w-4" />
             </div>
-            <h3 className="text-sm font-black text-slate-900">Redeem to UPI</h3>
+            <div>
+              <h3 className="text-xs font-black text-slate-900">
+                Redeem {isCommission ? "Commission" : "Earning"} Balance to UPI
+              </h3>
+              <p className="text-[10px] text-slate-500">
+                {isCommission
+                  ? "100% of your referral commission directly to bank"
+                  : "Self-earned coins via tasks & check-ins"}
+              </p>
+            </div>
           </div>
-          <span className="text-[11px] text-slate-500 font-medium bg-slate-100 px-2.5 py-0.5 rounded-full">
+          <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-full">
             Min: {minRequired} Coins ({formatInr(minInr)})
           </span>
         </div>
 
+        {/* Message Banner */}
         {message && (
           <div
             className={`rounded-xl p-3 text-xs font-semibold flex items-start space-x-2 ${
@@ -234,6 +348,42 @@ export default function WalletPage() {
           </div>
         )}
 
+        {/* Commission Locked View */}
+        {isCommissionLocked && (
+          <div className="rounded-xl bg-purple-50 border border-purple-200/80 p-4 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-xs font-bold text-purple-950">
+                <Lock className="h-4 w-4 text-purple-600" />
+                <span>Commission Withdrawal Locked</span>
+              </div>
+              <span className="text-xs font-black text-purple-700 font-mono">
+                {commissionProgress}% Complete
+              </span>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-purple-200/70 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-purple-600 h-full rounded-full transition-all duration-500"
+                style={{ width: `${commissionProgress}%` }}
+              />
+            </div>
+
+            <p className="text-[11px] text-purple-900 leading-relaxed">
+              Commission withdrawal unlocks when you reach <strong className="text-purple-950">1,000 Coins (₹100)</strong>. You have <strong>{commissionCoins} Coins</strong> and need <strong className="text-purple-700 font-bold">{1000 - commissionCoins} more Coins</strong>.
+            </p>
+
+            <Link
+              href="/refer"
+              className="inline-flex items-center space-x-1.5 text-xs font-bold text-purple-800 bg-white border border-purple-300 px-3 py-1.5 rounded-lg shadow-2xs hover:bg-purple-100 transition-colors"
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>Invite Friends to Reach ₹100 Faster →</span>
+            </Link>
+          </div>
+        )}
+
+        {/* Form Body */}
         <form onSubmit={handleWithdraw} className="space-y-4">
           {/* Preset amount selector */}
           <div>
@@ -241,11 +391,18 @@ export default function WalletPage() {
               Select Payout Amount
             </label>
             <div className="grid grid-cols-3 gap-2.5">
-              {[
-                { coins: 500, inr: 50, disabled: hasPriorWithdrawals },
-                { coins: 1000, inr: 100, disabled: false },
-                { coins: 2500, inr: 250, disabled: false },
-              ].map((opt) => {
+              {(isCommission
+                ? [
+                    { coins: 1000, inr: 100, disabled: isCommissionLocked },
+                    { coins: 2500, inr: 250, disabled: isCommissionLocked },
+                    { coins: 5000, inr: 500, disabled: isCommissionLocked },
+                  ]
+                : [
+                    { coins: 500, inr: 50, disabled: hasPriorWithdrawals },
+                    { coins: 1000, inr: 100, disabled: false },
+                    { coins: 2500, inr: 250, disabled: false },
+                  ]
+              ).map((opt) => {
                 const isSelected = selectedCoins === opt.coins;
                 return (
                   <button
@@ -257,22 +414,28 @@ export default function WalletPage() {
                       opt.disabled
                         ? "bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed opacity-50"
                         : isSelected
-                        ? "bg-emerald-50 border-emerald-500 text-emerald-900 shadow-sm ring-1 ring-emerald-500"
+                        ? isCommission
+                          ? "bg-purple-50 border-purple-500 text-purple-900 shadow-sm ring-1 ring-purple-500"
+                          : "bg-emerald-50 border-emerald-500 text-emerald-900 shadow-sm ring-1 ring-emerald-500"
                         : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
                     }`}
                   >
                     <span className="text-xs font-black">₹{opt.inr}</span>
-                    <span className="text-[10px] font-bold text-amber-600 mt-0.5">
+                    <span
+                      className={`text-[10px] font-bold mt-0.5 ${
+                        isCommission ? "text-purple-600" : "text-amber-600"
+                      }`}
+                    >
                       {opt.coins} Coins
                     </span>
-                    {opt.disabled && (
+                    {opt.disabled && !isCommission && (
                       <span className="text-[8px] text-slate-400 mt-0.5">1st payout only</span>
                     )}
                   </button>
                 );
               })}
             </div>
-            {hasPriorWithdrawals && (
+            {!isCommission && hasPriorWithdrawals && (
               <p className="text-[10px] text-slate-500 mt-1.5 flex items-center gap-1">
                 <ShieldCheck className="h-3 w-3 text-emerald-600" />
                 First withdrawal was unlocked at ₹50. Subsequent minimum is ₹100 (1000 Coins).
@@ -295,23 +458,33 @@ export default function WalletPage() {
               />
             </div>
             <p className="text-[10px] text-slate-500 mt-1">
-              Supports Google Pay, PhonePe, Paytm, BHIM & all Indian Bank UPIs.
+              Supports Google Pay, PhonePe, Paytm, BHIM &amp; all Indian Bank UPIs.
             </p>
           </div>
 
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={submitting || currentCoins < selectedCoins}
-            className="w-full flex items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-3.5 px-4 text-xs font-bold shadow-md shadow-emerald-600/25 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            disabled={submitting || activeCoins < selectedCoins || isCommissionLocked}
+            className={`w-full flex items-center justify-center space-x-2 rounded-xl py-3.5 px-4 text-xs font-bold shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
+              isCommission
+                ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-purple-600/25"
+                : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-emerald-600/25"
+            }`}
           >
             {submitting ? (
               <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : isCommissionLocked ? (
+              <>
+                <Lock className="h-4 w-4" />
+                <span>Locked (Requires ₹100 / 1000 Coins)</span>
+              </>
             ) : (
               <>
                 <ArrowUpRight className="h-4 w-4" />
                 <span>
-                  Withdraw {formatInr(coinsToInr(selectedCoins))} ({selectedCoins} Coins)
+                  Withdraw {formatInr(coinsToInr(selectedCoins))} ({selectedCoins} Coins) from{" "}
+                  {isCommission ? "Commission" : "Earning"}
                 </span>
               </>
             )}
@@ -341,7 +514,7 @@ export default function WalletPage() {
                 : "text-slate-500 hover:text-slate-800"
             }`}
           >
-            Earnings ({transactions.length})
+            Transactions ({transactions.length})
           </button>
         </div>
 
@@ -378,6 +551,15 @@ export default function WalletPage() {
                           <span className="text-[11px] text-slate-500 font-mono">
                             ({w.coins} Coins)
                           </span>
+                          {w.wallet_type === "commission" ? (
+                            <span className="bg-purple-100 text-purple-800 text-[9px] font-bold px-1.5 py-0.2 rounded">
+                              Commission
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.2 rounded">
+                              Earning
+                            </span>
+                          )}
                         </div>
                         <p className="text-[10px] text-slate-500 font-mono mt-0.5">
                           UPI: {w.upi_id}
@@ -417,7 +599,7 @@ export default function WalletPage() {
                 const typeLabels: Record<string, string> = {
                   survey: "CPX Paid Survey",
                   checkin: "Daily Check-in Bonus",
-                  referral: "Referral Commission",
+                  referral: "1% Referral Commission",
                   signup_bonus: "Welcome Signup Bonus",
                   withdrawal: "UPI Withdrawal",
                   refund: "Withdrawal Refund",
@@ -479,5 +661,20 @@ export default function WalletPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function WalletPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-12 flex flex-col items-center justify-center text-slate-400 space-y-2">
+          <div className="h-6 w-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-medium">Loading Wallet...</p>
+        </div>
+      }
+    >
+      <WalletContent />
+    </Suspense>
   );
 }

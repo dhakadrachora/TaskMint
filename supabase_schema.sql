@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name TEXT,
   phone TEXT,
   avatar_url TEXT,
-  coins INT NOT NULL DEFAULT 20,
+  coins INT NOT NULL DEFAULT 10,
+  commission_coins INT NOT NULL DEFAULT 0,
   referral_code TEXT UNIQUE NOT NULL,
   referred_by TEXT,
   last_checkin TIMESTAMPTZ,
@@ -20,8 +21,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Ensure phone column exists if table was already created
+-- Ensure phone & commission_coins columns exist if table was already created
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS commission_coins INT NOT NULL DEFAULT 0;
 
 -- Index for fast lookups
 CREATE INDEX IF NOT EXISTS idx_profiles_referral_code ON public.profiles(referral_code);
@@ -49,16 +51,20 @@ CREATE TABLE IF NOT EXISTS public.withdrawals (
   upi_id TEXT NOT NULL,
   coins INT NOT NULL CHECK (coins > 0),
   amount_inr NUMERIC(10, 2) NOT NULL CHECK (amount_inr > 0),
+  wallet_type TEXT NOT NULL DEFAULT 'earning' CHECK (wallet_type IN ('earning', 'commission')),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'rejected')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Ensure wallet_type column exists if table was already created
+ALTER TABLE public.withdrawals ADD COLUMN IF NOT EXISTS wallet_type TEXT NOT NULL DEFAULT 'earning';
 
 CREATE INDEX IF NOT EXISTS idx_withdrawals_user_id ON public.withdrawals(user_id);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON public.withdrawals(status);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_created_at ON public.withdrawals(created_at DESC);
 
 -- 4. ATOMIC FUNCTION: increment_coins
--- Safely increments or decrements user coins atomically with row lock
+-- Safely increments or decrements user self-earning coins atomically with row lock
 CREATE OR REPLACE FUNCTION public.increment_coins(user_uuid UUID, coin_amount INT)
 RETURNS INT
 LANGUAGE plpgsql
@@ -93,8 +99,47 @@ BEGIN
 END;
 $$;
 
--- 5. FUNCTION & TRIGGER: on_auth_user_created
--- Generates a 6-character alphanumeric referral code and credits 20 coins signup bonus
+-- 5. ATOMIC FUNCTION: increment_commission_coins
+-- Safely increments or decrements referral commission coins atomically with row lock
+CREATE OR REPLACE FUNCTION public.increment_commission_coins(user_uuid UUID, coin_amount INT)
+RETURNS INT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  current_bal INT;
+  new_bal INT;
+BEGIN
+  -- Lock row for update
+  SELECT commission_coins INTO current_bal
+  FROM public.profiles
+  WHERE id = user_uuid
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'User profile not found: %', user_uuid;
+  END IF;
+
+  -- Ensure balance does not drop below 0
+  IF (current_bal + coin_amount) < 0 THEN
+    RAISE EXCEPTION 'Insufficient commission coins: current balance %, requested change %', current_bal, coin_amount;
+  END IF;
+
+  UPDATE public.profiles
+  SET commission_coins = commission_coins + coin_amount
+  WHERE id = user_uuid
+  RETURNING commission_coins INTO new_bal;
+
+  RETURN new_bal;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.increment_coins(UUID, INT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.increment_commission_coins(UUID, INT) TO authenticated, service_role;
+
+-- 6. FUNCTION & TRIGGER: on_auth_user_created
+-- Generates a 6-character alphanumeric referral code and credits 10 coins (₹1) signup bonus
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -129,7 +174,7 @@ BEGIN
     END IF;
   END IF;
 
-  -- Insert profile with 20 signup bonus coins
+  -- Insert profile with 10 signup bonus coins and 0 commission coins
   INSERT INTO public.profiles (
     id,
     email,
@@ -137,6 +182,7 @@ BEGIN
     phone,
     avatar_url,
     coins,
+    commission_coins,
     referral_code,
     referred_by,
     is_admin,
@@ -147,14 +193,15 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
     COALESCE(NEW.raw_user_meta_data->>'phone', NEW.phone, NULL),
     COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', ''),
-    20,
+    10,
+    0,
     new_ref_code,
     referrer_code,
     FALSE,
     NOW()
   );
 
-  -- Log signup bonus transaction
+  -- Log 10 coins signup bonus transaction
   INSERT INTO public.transactions (
     user_id,
     trans_id,
@@ -165,12 +212,13 @@ BEGIN
     NEW.id,
     'signup_' || NEW.id || '_' || floor(extract(epoch from now())),
     'signup_bonus',
-    20,
+    10,
     'completed'
   );
 
   RETURN NEW;
 END;
+$$;
 $$;
 
 -- Create auth trigger

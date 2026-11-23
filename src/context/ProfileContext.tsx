@@ -9,6 +9,7 @@ interface ProfileContextType {
   loading: boolean;
   refreshProfile: () => Promise<void>;
   updateCoinsLocal: (delta: number) => void;
+  updateCommissionCoinsLocal: (delta: number) => void;
 }
 
 const ProfileContext = createContext<ProfileContextType>({
@@ -16,6 +17,7 @@ const ProfileContext = createContext<ProfileContextType>({
   loading: true,
   refreshProfile: async () => {},
   updateCoinsLocal: () => {},
+  updateCommissionCoinsLocal: () => {},
 });
 
 export function ProfileProvider({
@@ -67,6 +69,16 @@ export function ProfileProvider({
     });
   }, []);
 
+  const updateCommissionCoinsLocal = useCallback((delta: number) => {
+    setProfile((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        commission_coins: Math.max(0, (prev.commission_coins || 0) + delta),
+      };
+    });
+  }, []);
+
   useEffect(() => {
     if (!initialProfile) {
       refreshProfile();
@@ -80,6 +92,7 @@ export function ProfileProvider({
         loading,
         refreshProfile,
         updateCoinsLocal,
+        updateCommissionCoinsLocal,
       }}
     >
       {children}

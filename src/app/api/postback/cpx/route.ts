@@ -87,16 +87,17 @@ export async function GET(request: NextRequest) {
         coin_amount: userCoins,
       });
 
-      // 4. Check if profile.referred_by exists -> credit 10% lifetime commission to referrer
+      // 4. Check if profile.referred_by exists -> credit 1% live commission to referrer's commission wallet
       if (userProfile.referred_by && userCoins > 0) {
         const { data: referrer } = await admin
           .from("profiles")
-          .select("id")
+          .select("id, commission_coins")
           .eq("referral_code", userProfile.referred_by)
           .single();
 
         if (referrer && referrer.id !== user_id) {
-          const referralCoins = Math.round(userCoins * 0.1);
+          // Exactly 1% commission (minimum 1 coin)
+          const referralCoins = Math.max(1, Math.round(userCoins * 0.01));
           if (referralCoins > 0) {
             const refTransId = `ref_${trans_id}_${referrer.id}`;
 
@@ -116,10 +117,21 @@ export async function GET(request: NextRequest) {
                 status: "completed",
               });
 
-              await admin.rpc("increment_coins", {
+              // Atomically credit to referrer's commission wallet
+              const { error: incError } = await admin.rpc("increment_commission_coins", {
                 user_uuid: referrer.id,
                 coin_amount: referralCoins,
               });
+
+              if (incError) {
+                // Fallback direct update if RPC is missing
+                await admin
+                  .from("profiles")
+                  .update({
+                    commission_coins: (referrer.commission_coins || 0) + referralCoins,
+                  })
+                  .eq("id", referrer.id);
+              }
             }
           }
         }

@@ -5,6 +5,7 @@ export interface Profile {
   phone?: string | null;
   avatar_url: string | null;
   coins: number;
+  commission_coins?: number;
   referral_code: string;
   referred_by: string | null;
   last_checkin: string | null;
@@ -26,6 +27,7 @@ export interface Transaction {
 }
 
 export type WithdrawalStatus = 'pending' | 'paid' | 'rejected';
+export type WalletType = 'earning' | 'commission';
 
 export interface Withdrawal {
   id: string;
@@ -34,6 +36,7 @@ export interface Withdrawal {
   coins: number;
   amount_inr: number;
   status: WithdrawalStatus;
+  wallet_type?: WalletType;
   created_at: string;
   profile?: Profile;
 }

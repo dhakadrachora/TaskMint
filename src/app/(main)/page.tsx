@@ -27,9 +27,10 @@ export default function EarnDashboard() {
         </div>
       </div>
 
-      {/* Glowing Wallet Balance Card */}
+      {/* Glowing Dual-Wallet Balance Cards */}
       <WalletCard
         coins={profile?.coins ?? 0}
+        commissionCoins={profile?.commission_coins ?? 0}
         userName={profile?.full_name}
       />
 
@@ -48,11 +49,11 @@ export default function EarnDashboard() {
             </div>
             <div>
               <div className="flex items-center space-x-1.5">
-                <p className="text-xs font-black text-slate-900">Refer & Earn 10% Lifetime</p>
+                <p className="text-xs font-black text-slate-900">Refer &amp; Earn 1% Live Commission</p>
                 <span className="rounded bg-amber-200 text-amber-900 text-[9px] font-extrabold px-1.5 py-0.2">HOT</span>
               </div>
               <p className="text-[11px] text-slate-600 mt-0.5">
-                Earn 10% commission on every survey your friends finish!
+                Earn 1% instant commission on every survey your friends complete!
               </p>
             </div>
           </div>
