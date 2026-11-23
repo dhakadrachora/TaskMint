@@ -63,12 +63,19 @@ export async function POST(request: Request) {
     // 4. Check user balance in Earning Wallet
     const { data: profile, error: profError } = await admin
       .from("profiles")
-      .select("id, coins")
+      .select("id, coins, is_banned")
       .eq("id", user.id)
       .single();
 
     if (profError || !profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    }
+
+    if (profile.is_banned) {
+      return NextResponse.json(
+        { error: "Your account has been suspended. Please contact support." },
+        { status: 403 }
+      );
     }
 
     if ((profile.coins || 0) < chargeCoins) {

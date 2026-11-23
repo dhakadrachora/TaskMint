@@ -1,76 +1,74 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyAdminSession } from "@/lib/auth/admin-auth";
 
 export async function GET() {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await verifyAdminSession();
+    if (!auth.authorized || !auth.adminClient) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const admin = createAdminClient();
+    const admin = auth.adminClient;
 
-    // Verify admin privileges
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .single();
+    // Run independent metric queries in parallel
+    const [
+      usersCountRes,
+      transactionsRes,
+      pendingWithdrawalsRes,
+      paidWithdrawalsRes,
+      smmOrdersRes,
+      ticketsRes,
+    ] = await Promise.all([
+      // 1. Total users
+      admin.from("profiles").select("id", { count: "exact", head: true }),
+      // 2. Coins distributed
+      admin
+        .from("transactions")
+        .select("amount_coins")
+        .gt("amount_coins", 0)
+        .in("type", ["survey", "checkin", "referral", "signup_bonus"]),
+      // 3. Pending withdrawals
+      admin.from("withdrawals").select("amount_inr").eq("status", "pending"),
+      // 4. Paid withdrawals
+      admin.from("withdrawals").select("amount_inr").eq("status", "paid"),
+      // 5. SMM orders
+      admin.from("smm_orders").select("charge_coins, charge_inr"),
+      // 6. Open support tickets
+      admin.from("support_tickets").select("id", { count: "exact", head: true }).eq("status", "open"),
+    ]);
 
-    if (!profile?.is_admin) {
-      return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
-    }
+    const totalUsers = usersCountRes.count || 0;
 
-    // 1. Total Users
-    const { count: totalUsers } = await admin
-      .from("profiles")
-      .select("id", { count: "exact", head: true });
-
-    // 2. Total Coins Distributed (sum of positive coins from transactions)
-    const { data: transactions } = await admin
-      .from("transactions")
-      .select("amount_coins")
-      .gt("amount_coins", 0)
-      .in("type", ["survey", "checkin", "referral", "signup_bonus"]);
-
-    const totalCoinsDistributed = (transactions || []).reduce(
+    const totalCoinsDistributed = (transactionsRes.data || []).reduce(
       (sum, tx) => sum + (tx.amount_coins || 0),
       0
     );
 
-    // 3. Pending Payouts INR
-    const { data: pendingWithdrawals } = await admin
-      .from("withdrawals")
-      .select("amount_inr")
-      .eq("status", "pending");
-
-    const pendingPayoutsInr = (pendingWithdrawals || []).reduce(
+    const pendingPayoutsInr = (pendingWithdrawalsRes.data || []).reduce(
       (sum, w) => sum + Number(w.amount_inr || 0),
       0
     );
 
-    // 4. Total withdrawals count
-    const { count: totalWithdrawalsCount } = await admin
-      .from("withdrawals")
-      .select("id", { count: "exact", head: true });
+    const totalWithdrawalsCount =
+      (pendingWithdrawalsRes.data?.length || 0) + (paidWithdrawalsRes.data?.length || 0);
+
+    const smmOrders = smmOrdersRes.data || [];
+    const totalSmmOrdersCount = smmOrders.length;
+    const totalSmmCoinsCharged = smmOrders.reduce((sum, o) => sum + (o.charge_coins || 0), 0);
+
+    const openSupportTicketsCount = ticketsRes.count || 0;
 
     return NextResponse.json({
-      totalUsers: totalUsers || 0,
+      totalUsers,
       totalCoinsDistributed,
       pendingPayoutsInr,
-      totalWithdrawalsCount: totalWithdrawalsCount || 0,
+      totalWithdrawalsCount,
+      totalSmmOrdersCount,
+      totalSmmCoinsCharged,
+      openSupportTicketsCount,
     });
   } catch (error) {
     console.error("Admin stats error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

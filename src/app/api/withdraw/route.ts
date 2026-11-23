@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     const [profileRes, prevWithdrawalsRes] = await Promise.all([
       admin
         .from("profiles")
-        .select("id, coins, commission_coins")
+        .select("id, coins, commission_coins, is_banned")
         .eq("id", user.id)
         .single(),
       admin
@@ -54,6 +54,13 @@ export async function POST(request: Request) {
     const profile = profileRes.data;
     if (profileRes.error || !profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    }
+
+    if (profile.is_banned) {
+      return NextResponse.json(
+        { error: "Your account has been suspended for security review. Please contact support." },
+        { status: 403 }
+      );
     }
 
     // Minimum limit rules:

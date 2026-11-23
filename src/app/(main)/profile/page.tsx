@@ -28,6 +28,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { formatCoins, coinsToInr, formatInr } from "@/lib/utils";
+import { SupportSection } from "@/components/SupportSection";
 
 interface StatsData {
   surveysCompleted: number;
@@ -435,30 +436,8 @@ export default function ProfilePage() {
         </Link>
       )}
 
-      {/* Support & Community Section */}
-      <div className="rounded-2xl bg-white border border-slate-200/90 p-4 shadow-sm space-y-3">
-        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-          Help &amp; Community
-        </h3>
-
-        <a
-          href={telegramUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-between rounded-xl bg-[#229ED9]/10 hover:bg-[#229ED9]/15 border border-[#229ED9]/30 p-3 text-slate-800 transition-colors"
-        >
-          <div className="flex items-center space-x-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#229ED9] text-white shadow-sm">
-              <Send className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-900">Official Telegram Support</p>
-              <p className="text-[10px] text-slate-500">Fast help for survey credits &amp; UPI queries</p>
-            </div>
-          </div>
-          <ExternalLink className="h-4 w-4 text-[#229ED9]" />
-        </a>
-      </div>
+      {/* 24/7 Problem & Helpdesk Support Section */}
+      <SupportSection />
 
       {/* Legal & Policy Links */}
       <div className="rounded-2xl bg-white border border-slate-200/90 p-4 shadow-sm space-y-1">

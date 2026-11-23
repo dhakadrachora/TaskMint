@@ -10,6 +10,8 @@ export interface Profile {
   referred_by: string | null;
   last_checkin: string | null;
   is_admin: boolean;
+  is_banned?: boolean;
+  ban_reason?: string | null;
   created_at: string;
 }
 
@@ -64,4 +66,33 @@ export interface AdminStats {
   totalCoinsDistributed: number;
   pendingPayoutsInr: number;
   totalWithdrawalsCount: number;
+  totalBannedUsers?: number;
+  totalSmmOrdersCount?: number;
+  totalSmmCoinsCharged?: number;
+  openSupportTicketsCount?: number;
+}
+
+export type SupportTicketCategory = 'withdrawal' | 'survey' | 'views' | 'account' | 'other';
+export type SupportTicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+
+export interface SupportTicket {
+  id: string;
+  user_id: string;
+  ticket_number: string;
+  category: SupportTicketCategory;
+  subject: string;
+  message: string;
+  status: SupportTicketStatus;
+  admin_reply?: string | null;
+  admin_replied_at?: string | null;
+  resolved_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  profile?: {
+    full_name: string | null;
+    email: string | null;
+    phone?: string | null;
+    coins: number;
+    commission_coins?: number;
+  };
 }

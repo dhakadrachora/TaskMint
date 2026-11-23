@@ -21,9 +21,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Ensure phone & commission_coins columns exist if table was already created
+-- Ensure phone, commission_coins & ban columns exist if table was already created
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS commission_coins INT NOT NULL DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS ban_reason TEXT;
 
 -- Index for fast lookups
 CREATE INDEX IF NOT EXISTS idx_profiles_referral_code ON public.profiles(referral_code);
@@ -309,4 +311,44 @@ CREATE POLICY "Users can view own smm orders"
 
 CREATE POLICY "Service role can manage smm orders"
   ON public.smm_orders FOR ALL
+  USING (auth.role() = 'service_role' OR public.is_admin());
+
+-- 9. SUPPORT TICKETS TABLE (User Problem & Helpdesk System)
+CREATE TABLE IF NOT EXISTS public.support_tickets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  ticket_number TEXT UNIQUE NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('withdrawal', 'survey', 'views', 'account', 'other')),
+  subject TEXT NOT NULL,
+  message TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
+  admin_reply TEXT,
+  admin_replied_at TIMESTAMPTZ,
+  resolved_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_support_tickets_user_id ON public.support_tickets(user_id);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON public.support_tickets(status);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_created_at ON public.support_tickets(created_at DESC);
+
+-- Support Tickets RLS Policies
+ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own support tickets"
+  ON public.support_tickets FOR SELECT
+  USING (auth.uid() = user_id OR public.is_admin());
+
+CREATE POLICY "Users can insert own support tickets"
+  ON public.support_tickets FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Admins can update support tickets"
+  ON public.support_tickets FOR UPDATE
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+CREATE POLICY "Service role full access on support tickets"
+  ON public.support_tickets FOR ALL
   USING (auth.role() = 'service_role' OR public.is_admin());

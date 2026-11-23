@@ -19,12 +19,19 @@ export async function POST() {
     // Fetch user profile to check last_checkin
     const { data: profile, error: profileError } = await admin
       .from("profiles")
-      .select("id, last_checkin, coins")
+      .select("id, last_checkin, coins, is_banned")
       .eq("id", user.id)
       .single();
 
     if (profileError || !profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    }
+
+    if (profile.is_banned) {
+      return NextResponse.json(
+        { error: "Your account has been suspended. Please contact support." },
+        { status: 403 }
+      );
     }
 
     // Check 24-hour limit
