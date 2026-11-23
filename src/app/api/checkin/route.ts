@@ -47,18 +47,32 @@ export async function POST() {
 
     const CHECKIN_REWARD = 10;
     const nowIso = new Date().toISOString();
+    const transId = `checkin_${user.id}_${Date.now()}`;
 
-    // Safely increment coins using RPC or direct update with admin client
+    // Parallelize RPC increment, last_checkin timestamp update, and transaction ledger
+    const [rpcResult] = await Promise.all([
+      admin.rpc("increment_coins", {
+        user_uuid: user.id,
+        coin_amount: CHECKIN_REWARD,
+      }),
+      admin
+        .from("profiles")
+        .update({ last_checkin: nowIso })
+        .eq("id", user.id),
+      admin.from("transactions").insert({
+        user_id: user.id,
+        trans_id: transId,
+        type: "checkin",
+        amount_coins: CHECKIN_REWARD,
+        status: "completed",
+      }),
+    ]);
+
     let updatedCoins = profile.coins + CHECKIN_REWARD;
-    const { data: rpcBal, error: rpcError } = await admin.rpc("increment_coins", {
-      user_uuid: user.id,
-      coin_amount: CHECKIN_REWARD,
-    });
-
-    if (!rpcError && typeof rpcBal === "number") {
-      updatedCoins = rpcBal;
+    if (!rpcResult.error && typeof rpcResult.data === "number") {
+      updatedCoins = rpcResult.data;
     } else {
-      // Fallback direct update if RPC is missing
+      // Fallback update if RPC failed
       await admin
         .from("profiles")
         .update({
@@ -67,22 +81,6 @@ export async function POST() {
         })
         .eq("id", user.id);
     }
-
-    // Always record last_checkin time
-    await admin
-      .from("profiles")
-      .update({ last_checkin: nowIso })
-      .eq("id", user.id);
-
-    // Record transaction
-    const transId = `checkin_${user.id}_${Date.now()}`;
-    await admin.from("transactions").insert({
-      user_id: user.id,
-      trans_id: transId,
-      type: "checkin",
-      amount_coins: CHECKIN_REWARD,
-      status: "completed",
-    });
 
     return NextResponse.json({
       success: true,

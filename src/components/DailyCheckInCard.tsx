@@ -49,6 +49,24 @@ export function DailyCheckInCard() {
   const handleClaim = async () => {
     if (!isAvailable || loading) return;
 
+    // 0ms Optimistic UI Response
+    setIsAvailable(false);
+    updateCoinsLocal(10);
+    setToastMessage("🎉 +10 Coins (₹1.00) Added!");
+    setTimeout(() => setToastMessage(null), 3500);
+
+    // Instant confetti micro-interaction
+    try {
+      confetti({
+        particleCount: 90,
+        spread: 65,
+        origin: { y: 0.7 },
+        colors: ["#10B981", "#F59E0B", "#3B82F6"],
+      });
+    } catch {
+      // Ignored if confetti fails
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/api/checkin", {
@@ -58,28 +76,19 @@ export function DailyCheckInCard() {
       const data = await res.json();
 
       if (res.ok) {
-        // Fire confetti
-        try {
-          confetti({
-            particleCount: 80,
-            spread: 60,
-            origin: { y: 0.7 },
-            colors: ["#10B981", "#F59E0B", "#3B82F6"],
-          });
-        } catch {
-          // Ignored if confetti fails
-        }
-
-        updateCoinsLocal(10);
-        setToastMessage("🎉 +10 Coins (₹1.00) Added!");
-        setTimeout(() => setToastMessage(null), 4000);
         await refreshProfile();
       } else {
-        setToastMessage(data.error || "Claim failed");
+        // Rollback on rejection
+        updateCoinsLocal(-10);
+        setIsAvailable(true);
+        setToastMessage(data.error || "Claim failed. Please try again.");
         setTimeout(() => setToastMessage(null), 3000);
       }
     } catch {
-      setToastMessage("Network error, please try again");
+      // Rollback on network failure
+      updateCoinsLocal(-10);
+      setIsAvailable(true);
+      setToastMessage("Network error, please check connection");
       setTimeout(() => setToastMessage(null), 3000);
     } finally {
       setLoading(false);

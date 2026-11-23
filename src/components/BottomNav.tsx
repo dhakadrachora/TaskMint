@@ -42,6 +42,13 @@ const navItems: NavItem[] = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const [activeTab, setActiveTab] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setActiveTab(null);
+  }, [pathname]);
+
+  const currentTab = activeTab ?? pathname;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40">
@@ -51,15 +58,17 @@ export function BottomNav() {
             const Icon = item.icon;
             const isActive =
               item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
+                ? currentTab === "/"
+                : currentTab.startsWith(item.href);
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
+                onClick={() => setActiveTab(item.href)}
                 className={cn(
-                  "flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all duration-200 group active:scale-95",
+                  "flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all duration-75 group active:scale-90 cursor-pointer touch-manipulation",
                   isActive
                     ? "text-emerald-600 font-bold"
                     : "text-slate-500 hover:text-slate-900 font-medium"
@@ -67,7 +76,7 @@ export function BottomNav() {
               >
                 <div
                   className={cn(
-                    "flex items-center justify-center h-7 w-7 rounded-lg transition-transform",
+                    "flex items-center justify-center h-7 w-7 rounded-lg transition-transform duration-75",
                     isActive
                       ? "bg-emerald-50 text-emerald-600 scale-110 shadow-sm"
                       : "group-hover:scale-105"

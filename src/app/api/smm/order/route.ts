@@ -141,36 +141,38 @@ export async function POST(request: Request) {
       }
 
       const providerOrderId = String(providerData.order);
+      const transId = `smm_${providerOrderId}_${Date.now()}`;
 
-      // 7. Insert order into smm_orders
-      const { data: newOrder, error: orderInsertError } = await admin
-        .from("smm_orders")
-        .insert({
+      // 7 & 8. Insert order and transaction in parallel
+      const [orderInsertResult] = await Promise.all([
+        admin
+          .from("smm_orders")
+          .insert({
+            user_id: user.id,
+            provider_order_id: providerOrderId,
+            service_id: Number(serviceId),
+            link: trimmedLink,
+            quantity: qty,
+            charge_coins: chargeCoins,
+            charge_inr: chargeInr,
+            status: "Pending",
+            estimated_time: "15 mins - 2 hours",
+          })
+          .select()
+          .single(),
+        admin.from("transactions").insert({
           user_id: user.id,
-          provider_order_id: providerOrderId,
-          service_id: Number(serviceId),
-          link: trimmedLink,
-          quantity: qty,
-          charge_coins: chargeCoins,
-          charge_inr: chargeInr,
-          status: "Pending",
-          estimated_time: "15 mins - 2 hours",
-        })
-        .select()
-        .single();
+          trans_id: transId,
+          type: "smm_order",
+          amount_coins: -chargeCoins,
+          status: "completed",
+        }),
+      ]);
 
-      if (orderInsertError) {
-        console.error("Order DB insertion error:", orderInsertError);
+      const newOrder = orderInsertResult.data;
+      if (orderInsertResult.error) {
+        console.error("Order DB insertion error:", orderInsertResult.error);
       }
-
-      // 8. Insert into transactions table
-      await admin.from("transactions").insert({
-        user_id: user.id,
-        trans_id: `smm_${providerOrderId}_${Date.now()}`,
-        type: "smm_order",
-        amount_coins: -chargeCoins,
-        status: "completed",
-      });
 
       return NextResponse.json({
         success: true,

@@ -64,8 +64,11 @@ export default function InstagramViewsStorePage() {
     loadOrders();
   }, []);
 
-  // Handle Preset Click
+  // Handle Preset Click with instant micro-interaction
   const handleSelectPreset = (qty: number) => {
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(25);
+    }
     setQuantity(qty);
     setMessage(null);
   };

@@ -40,6 +40,7 @@ export default function EarnDashboard() {
       {/* Quick Action Highlight Banner (Refer & Earn teaser) */}
       <Link
         href="/refer"
+        prefetch={true}
         className="block rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-200/80 p-3.5 transition-all hover:bg-amber-500/20 active:scale-[0.99]"
       >
         <div className="flex items-center justify-between">

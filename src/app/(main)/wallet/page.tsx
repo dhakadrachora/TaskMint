@@ -89,6 +89,9 @@ function WalletContent() {
 
   // When switching wallet tab, adjust selected preset
   const handleWalletTabSwitch = (target: "earning" | "commission") => {
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(25);
+    }
     setWalletToWithdraw(target);
     setMessage(null);
     if (target === "commission") {
@@ -96,6 +99,13 @@ function WalletContent() {
     } else {
       setSelectedCoins(hasPriorWithdrawals ? 1000 : 500);
     }
+  };
+
+  const handleSelectCoins = (coins: number) => {
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(20);
+    }
+    setSelectedCoins(coins);
   };
 
   const isCommission = walletToWithdraw === "commission";
@@ -408,7 +418,7 @@ function WalletContent() {
                   <button
                     key={opt.coins}
                     type="button"
-                    onClick={() => !opt.disabled && setSelectedCoins(opt.coins)}
+                    onClick={() => !opt.disabled && handleSelectCoins(opt.coins)}
                     disabled={opt.disabled}
                     className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all text-center cursor-pointer ${
                       opt.disabled

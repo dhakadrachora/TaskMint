@@ -37,14 +37,22 @@ export async function POST(request: Request) {
 
     const admin = createAdminClient();
 
-    // Check user's current profile balance
-    const { data: profile, error: profileError } = await admin
-      .from("profiles")
-      .select("id, coins, commission_coins")
-      .eq("id", user.id)
-      .single();
+    // Fetch profile and check previous withdrawals in parallel
+    const [profileRes, prevWithdrawalsRes] = await Promise.all([
+      admin
+        .from("profiles")
+        .select("id, coins, commission_coins")
+        .eq("id", user.id)
+        .single(),
+      admin
+        .from("withdrawals")
+        .select("id, status")
+        .eq("user_id", user.id)
+        .in("status", ["pending", "paid"]),
+    ]);
 
-    if (profileError || !profile) {
+    const profile = profileRes.data;
+    if (profileRes.error || !profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
@@ -78,14 +86,9 @@ export async function POST(request: Request) {
       }
     } else {
       // Check user's previous withdrawals for Earning Wallet tier
-      const { data: previousWithdrawals, error: prevError } = await admin
-        .from("withdrawals")
-        .select("id, status")
-        .eq("user_id", user.id)
-        .in("status", ["pending", "paid"]);
-
+      const previousWithdrawals = prevWithdrawalsRes.data;
       const hasPriorWithdrawals = Boolean(
-        !prevError && previousWithdrawals && previousWithdrawals.length > 0
+        !prevWithdrawalsRes.error && previousWithdrawals && previousWithdrawals.length > 0
       );
 
       minCoinsRequired = hasPriorWithdrawals ? 1000 : 500;

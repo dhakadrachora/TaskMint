@@ -64,25 +64,26 @@ export default function ReferPage() {
   }, []);
 
   const referralCode = profile?.referral_code || data?.referralCode || "TASKMINT";
-  const [origin, setOrigin] = useState("");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setOrigin(window.location.origin);
-    }
-  }, []);
-
-  const referralLink = origin ? `${origin}/login?ref=${referralCode}` : "";
+  
+  // Instant synchronous referral link ready on frame 0
+  const baseOrigin =
+    typeof window !== "undefined" && window.location.origin
+      ? window.location.origin
+      : "https://taskmint-iota.vercel.app";
+  const referralLink = `${baseOrigin}/login?ref=${referralCode}`;
 
   const handleCopy = async () => {
     if (!referralLink) return;
     try {
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(35);
+      }
       await navigator.clipboard.writeText(referralLink);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
