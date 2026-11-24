@@ -15,6 +15,12 @@ import {
   KeyRound,
   CheckCircle2,
   Phone,
+  ChevronDown,
+  HelpCircle,
+  Video,
+  Wallet,
+  ShieldCheck,
+  TrendingUp,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -42,6 +48,32 @@ function LoginContent() {
   // Status
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // FAQ Accordion State
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  const faqs = [
+    {
+      q: "What is TaskMint and how does it work?",
+      a: "TaskMint is India's 100% free micro-rewards web app. You earn virtual coins by completing quick activities like daily check-ins, watching 15-second sponsor ads, and inviting friends. Coins can be redeemed for real UPI cash or free Instagram video views.",
+    },
+    {
+      q: "How to earn real money watching ads on TaskMint?",
+      a: "Simply tap 'Watch Ads' on your dashboard. Watch the 15-second sponsor ad, wait for the timer to complete, and claim 1 Coin (+₹0.10) per ad. Combine this with the Daily Check-in (+2 Coins) and refer friends for 1% lifetime commission.",
+    },
+    {
+      q: "How do I get free Instagram views?",
+      a: "Go to the Views tab, paste your public Instagram Reel or video URL, select your desired views quantity (1,000 to 50,000 views), and pay using your earned coins. Views are delivered automatically within 1 to 24 hours.",
+    },
+    {
+      q: "Is TaskMint free to join?",
+      a: "Yes! TaskMint is 100% free with zero investment. You can join in 5 seconds with just your name, no complex passwords or bank details needed upfront.",
+    },
+    {
+      q: "What is the minimum withdrawal and how to withdraw?",
+      a: "The minimum withdrawal is just ₹10 (100 coins). Go to the Wallet section, enter your UPI ID (Google Pay, PhonePe, Paytm), and submit. Payouts are verified and sent directly to your bank account.",
+    },
+  ];
 
   useEffect(() => {
     setMounted(true);
@@ -478,6 +510,142 @@ function LoginContent() {
           </div>
         </div>
       )}
+
+      {/* How TaskMint Works SEO Section */}
+      <div className="mt-8 pt-6 border-t border-slate-200/80 space-y-6">
+        <div>
+          <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-2">
+            <Sparkles className="h-3 w-3" />
+            <span>How It Works</span>
+          </div>
+          <h2 className="text-base font-black text-slate-900 tracking-tight">
+            Earn Real Cash &amp; Instagram Views in 3 Easy Steps
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Over 50,000+ creators and students use TaskMint daily to earn pocket money and boost their social reach.
+          </p>
+        </div>
+
+        {/* 3 Step Cards */}
+        <div className="space-y-2.5">
+          <div className="flex items-start space-x-3 p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 font-black text-xs">
+              1
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-slate-900">Sign Up Instantly for Free</h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Enter your name to unlock your dashboard and claim an instant 20 Coins (₹2.00) welcome bonus.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start space-x-3 p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 font-black text-xs">
+              2
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-slate-900">Watch Ads &amp; Claim Streaks</h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Watch 15-second sponsor ads (+1 Coin) and claim the daily streak bonus (+2 Coins) every 24 hours.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start space-x-3 p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 font-black text-xs">
+              3
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-slate-900">Cash Out via UPI or Get Views</h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Withdraw directly to Google Pay, PhonePe, or Paytm UPI (min ₹10), or order real Instagram video views!
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Key Features Grid */}
+        <div className="grid grid-cols-2 gap-2.5 pt-2">
+          <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-50/80 to-teal-50/50 border border-emerald-100">
+            <div className="flex items-center space-x-1.5 text-emerald-700 mb-1">
+              <Wallet className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-bold">Instant UPI Cash</span>
+            </div>
+            <p className="text-[10px] text-slate-600">
+              Direct transfer to GPay, PhonePe, Paytm with low ₹10 threshold.
+            </p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-gradient-to-br from-purple-50/80 to-pink-50/50 border border-purple-100">
+            <div className="flex items-center space-x-1.5 text-purple-700 mb-1">
+              <Video className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-bold">Instagram Views</span>
+            </div>
+            <p className="text-[10px] text-slate-600">
+              Boost your Reels with 1,000 to 50,000 real organic video views.
+            </p>
+          </div>
+        </div>
+
+        {/* FAQ Accordion Section for SEO and Google AI Overviews */}
+        <div className="pt-2">
+          <div className="flex items-center space-x-1.5 mb-3">
+            <HelpCircle className="h-4 w-4 text-emerald-600" />
+            <h2 className="text-sm font-black text-slate-900 tracking-tight">
+              Frequently Asked Questions (FAQ)
+            </h2>
+          </div>
+
+          <div className="space-y-2">
+            {faqs.map((faq, idx) => {
+              const isOpen = openFaq === idx;
+              return (
+                <div
+                  key={idx}
+                  className="rounded-xl border border-slate-200/90 bg-white overflow-hidden transition-all shadow-2xs"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaq(isOpen ? null : idx)}
+                    className="w-full text-left p-3 flex items-center justify-between text-xs font-bold text-slate-800 hover:text-emerald-700 transition-colors"
+                  >
+                    <span>{faq.q}</span>
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ${
+                        isOpen ? "rotate-180 text-emerald-600" : ""
+                      }`}
+                    />
+                  </button>
+                  {isOpen && (
+                    <div className="px-3 pb-3 pt-0 text-[11px] text-slate-600 leading-relaxed border-t border-slate-100 mt-1">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Trust Badges */}
+        <div className="p-3 rounded-xl bg-slate-100/80 border border-slate-200/80 flex items-center justify-around text-center">
+          <div>
+            <p className="text-xs font-black text-slate-900">100% Free</p>
+            <p className="text-[9px] text-slate-500 font-medium">No Investment</p>
+          </div>
+          <div className="h-6 w-px bg-slate-300/80" />
+          <div>
+            <p className="text-xs font-black text-emerald-700">Instant UPI</p>
+            <p className="text-[9px] text-slate-500 font-medium">Real Payouts</p>
+          </div>
+          <div className="h-6 w-px bg-slate-300/80" />
+          <div>
+            <p className="text-xs font-black text-purple-700">Real Views</p>
+            <p className="text-[9px] text-slate-500 font-medium">SMM API</p>
+          </div>
+        </div>
+      </div>
 
       {/* Bottom Legal links */}
       <div className="pt-4 pb-2 text-center text-[10px] text-slate-500 leading-normal">
