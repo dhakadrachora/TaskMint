@@ -25,8 +25,25 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
-function LoginContent() {
+function ReferralParamReader({ onRef }: { onRef: (ref: string) => void }) {
   const searchParams = useSearchParams();
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (ref) {
+      const sanitized = ref.trim().toUpperCase();
+      onRef(sanitized);
+      try {
+        localStorage.setItem("taskmint_ref", sanitized);
+        document.cookie = `taskmint_ref=${sanitized}; path=/; max-age=604800; SameSite=Lax`;
+      } catch (e) {
+        console.error("Storage error:", e);
+      }
+    }
+  }, [searchParams, onRef]);
+  return null;
+}
+
+export default function LoginPage() {
   const router = useRouter();
 
   const [mounted, setMounted] = useState(false);
@@ -77,25 +94,13 @@ function LoginContent() {
 
   useEffect(() => {
     setMounted(true);
-    const ref = searchParams.get("ref");
-    if (ref) {
-      const sanitized = ref.trim().toUpperCase();
-      setRefCode(sanitized);
-      try {
-        localStorage.setItem("taskmint_ref", sanitized);
-        document.cookie = `taskmint_ref=${sanitized}; path=/; max-age=604800; SameSite=Lax`;
-      } catch (e) {
-        console.error("Storage error:", e);
-      }
-    } else {
-      try {
-        const stored = localStorage.getItem("taskmint_ref");
-        if (stored) setRefCode(stored);
-      } catch (e) {
-        console.error("Storage error:", e);
-      }
+    try {
+      const stored = localStorage.getItem("taskmint_ref");
+      if (stored) setRefCode(stored);
+    } catch (e) {
+      console.error("Storage error:", e);
     }
-  }, [searchParams]);
+  }, []);
 
   // 1. Quick Name-Only Entry
   const handleQuickLogin = async (e: React.FormEvent) => {
@@ -659,23 +664,11 @@ function LoginContent() {
         </Link>
         .
       </div>
-    </div>
-  );
-}
 
-export default function LoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="w-full max-w-md mx-auto min-h-screen bg-slate-50 flex items-center justify-center p-6">
-          <div className="flex flex-col items-center space-y-3">
-            <div className="h-8 w-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs text-slate-500 font-medium">Loading TaskMint...</p>
-          </div>
-        </div>
-      }
-    >
-      <LoginContent />
-    </Suspense>
+      {/* URL Referral Param Reader */}
+      <Suspense fallback={null}>
+        <ReferralParamReader onRef={(code) => setRefCode(code)} />
+      </Suspense>
+    </div>
   );
 }
