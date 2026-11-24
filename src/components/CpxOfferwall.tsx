@@ -116,76 +116,39 @@ export function CpxOfferwall({ profile }: CpxOfferwallProps) {
             </>
           )}
 
-          {/* Fallback / Configuration State */}
+          {/* No Surveys Available Notice -> Direct to Adsterra Ads */}
           {!loading && (!config || !config.configured) && (
-            <div className="p-5 flex flex-col items-center text-center justify-center min-h-[500px]">
-              <div className="h-14 w-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4 shadow-sm">
+            <div className="p-6 flex flex-col items-center text-center justify-center min-h-[380px] space-y-3.5">
+              <div className="h-14 w-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shadow-xs">
                 <Sparkles className="h-7 w-7" />
               </div>
-              <h3 className="text-base font-bold text-slate-800">
-                CPX Research Integration Ready
-              </h3>
-              <p className="mt-1.5 text-xs text-slate-500 max-w-xs leading-relaxed">
-                Add your <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono text-[11px]">NEXT_PUBLIC_CPX_APP_ID</code> and <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono text-[11px]">CPX_SECURE_HASH</code> to your environment variables to load live CPX surveys.
-              </p>
-
-              {/* Sample simulated available survey cards for instant visual testing */}
-              <div className="mt-5 w-full text-left space-y-2.5">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-700 px-1">
-                  <span>Sample Available Surveys</span>
-                  <span className="text-[10px] text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full">Preview Mode</span>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs hover:border-emerald-300 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-slate-800">Consumer Habits & Shopping</span>
-                      <p className="text-[11px] text-slate-500">⏱️ ~8 minutes • Easy</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="inline-block rounded-lg bg-amber-500 text-slate-950 font-black text-xs px-2.5 py-1 shadow-xs">
-                        +85 Coins
-                      </span>
-                      <p className="text-[10px] text-emerald-600 font-bold mt-0.5">₹8.50 INR</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs hover:border-emerald-300 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-slate-800">Technology & Smartphone Trends</span>
-                      <p className="text-[11px] text-slate-500">⏱️ ~15 minutes • High Reward</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="inline-block rounded-lg bg-amber-500 text-slate-950 font-black text-xs px-2.5 py-1 shadow-xs">
-                        +175 Coins
-                      </span>
-                      <p className="text-[10px] text-emerald-600 font-bold mt-0.5">₹17.50 INR</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs hover:border-emerald-300 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-slate-800">Quick Opinion Poll</span>
-                      <p className="text-[11px] text-slate-500">⏱️ ~3 minutes • Instant</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="inline-block rounded-lg bg-amber-500 text-slate-950 font-black text-xs px-2.5 py-1 shadow-xs">
-                        +30 Coins
-                      </span>
-                      <p className="text-[10px] text-emerald-600 font-bold mt-0.5">₹3.00 INR</p>
-                    </div>
-                  </div>
-                </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-black text-slate-900">
+                  Surveys Updating for Your Region
+                </h3>
+                <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+                  No third-party surveys are currently matching your demographic. Surveys refresh automatically every 24 hours.
+                </p>
               </div>
 
-              <div className="mt-5 flex items-center space-x-1.5 text-[11px] text-slate-400">
-                <Info className="h-3.5 w-3.5" />
-                <span>Postback webhook configured at <code className="text-slate-600 font-mono">/api/postback/cpx</code></span>
+              <div className="rounded-xl bg-amber-50 border border-amber-200/90 p-3.5 text-xs text-amber-900 max-w-xs text-left space-y-1.5">
+                <p className="font-bold text-amber-950 flex items-center gap-1.5">
+                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                  <span>Earn Active Now: Watch Ads</span>
+                </p>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  You can earn instant coins right now by viewing 15-second sponsored ads above. Each ad credits immediately!
+                </p>
               </div>
+
+              <button
+                onClick={() => {
+                  window.scrollTo({ top: 120, behavior: "smooth" });
+                }}
+                className="py-2.5 px-5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
+              >
+                Go to Watch Ads &amp; Earn ↑
+              </button>
             </div>
           )}
         </div>

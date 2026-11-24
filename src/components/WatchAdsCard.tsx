@@ -9,7 +9,7 @@ import {
   Clock,
   ExternalLink,
   Flame,
-  Gift,
+  ShieldAlert,
   Zap,
 } from "lucide-react";
 import confetti from "canvas-confetti";
@@ -29,9 +29,13 @@ export function WatchAdsCard() {
   const [claiming, setClaiming] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [remainingToday, setRemainingToday] = useState<number | null>(null);
+  const [adStartedAt, setAdStartedAt] = useState<number | null>(null);
 
-  // Start watching ad
+  // Start watching ad with anti-bypass tracking
   const handleStartWatch = () => {
+    const now = Date.now();
+    setAdStartedAt(now);
+
     // Open Adsterra Smartlink in a new tab
     if (typeof window !== "undefined") {
       window.open(adUrl, "_blank", "noopener,noreferrer");
@@ -43,7 +47,7 @@ export function WatchAdsCard() {
     setCanClaim(false);
   };
 
-  // 15 seconds countdown timer
+  // 15 seconds strict countdown timer
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (adModalOpen && countdown > 0) {
@@ -58,16 +62,22 @@ export function WatchAdsCard() {
 
   // Claim reward
   const handleClaim = async () => {
-    if (!canClaim || claiming) return;
+    if (!canClaim || claiming || !adStartedAt) return;
+
+    // Verify minimum 14.5 seconds on client
+    if (Date.now() - adStartedAt < 14500) {
+      setToastMessage("⚠️ Ad view incomplete! Please view for full 15 seconds.");
+      return;
+    }
 
     setClaiming(true);
 
-    // 1. Instant Optimistic UI & Confetti
-    updateCoinsLocal(10);
+    // 1. Instant Optimistic UI (+1 Coin) & Confetti
+    updateCoinsLocal(1);
     try {
       confetti({
-        particleCount: 90,
-        spread: 70,
+        particleCount: 80,
+        spread: 60,
         origin: { y: 0.6 },
         colors: ["#F59E0B", "#10B981", "#3B82F6"],
       });
@@ -76,15 +86,19 @@ export function WatchAdsCard() {
     }
 
     if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate([40, 60, 40]);
+      navigator.vibrate([40, 60]);
     }
 
-    setToastMessage("🎉 +10 Coins (₹1.00) Added!");
+    setToastMessage("🎉 +1 Coin Added!");
     setAdModalOpen(false);
 
     try {
       const res = await fetch("/api/ads/claim", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startedAt: adStartedAt,
+        }),
       });
 
       const data = await res.json();
@@ -92,8 +106,8 @@ export function WatchAdsCard() {
         setRemainingToday(data.remainingToday);
         await refreshProfile();
       } else {
-        // Rollback on rejection (e.g. daily limit or cooldown)
-        updateCoinsLocal(-10);
+        // Rollback on rejection (e.g. daily limit, cooldown or bypass)
+        updateCoinsLocal(-1);
         setToastMessage(data.error || "Claim failed");
         await refreshProfile();
       }
@@ -101,6 +115,7 @@ export function WatchAdsCard() {
       setToastMessage("Network error. Please try again.");
     } finally {
       setClaiming(false);
+      setAdStartedAt(null);
       setTimeout(() => setToastMessage(null), 3500);
     }
   };
@@ -125,11 +140,11 @@ export function WatchAdsCard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-1.5 text-[11px] font-bold text-amber-400 uppercase tracking-wider">
               <Flame className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-              <span>Instant Cash Ads</span>
+              <span>Sponsored Cash Ads</span>
             </div>
             <div className="flex items-center space-x-1 text-[10px] text-amber-300 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded-full font-bold">
               <Sparkles className="h-3 w-3 text-amber-400" />
-              <span>+10 Coins (₹1) Per Ad</span>
+              <span>+1 Coin (₹0.10) Per Ad</span>
             </div>
           </div>
 
@@ -138,12 +153,12 @@ export function WatchAdsCard() {
             <div>
               <h3 className="text-base font-black tracking-tight text-white flex items-center gap-1.5">
                 <span>Watch Ads &amp; Earn</span>
-                <span className="text-xs font-bold text-amber-400 bg-amber-400/20 px-1.5 py-0.2 rounded">
-                  UNLIMITED
+                <span className="text-[10px] font-bold text-amber-400 bg-amber-400/20 px-1.5 py-0.2 rounded">
+                  Active
                 </span>
               </h3>
               <p className="mt-0.5 text-xs text-slate-300 font-medium">
-                View short 15-second ads to get instant cash coins!
+                View 15-second sponsor ads completely to claim coins!
               </p>
             </div>
 
@@ -160,18 +175,18 @@ export function WatchAdsCard() {
           <div className="flex items-center justify-between border-t border-white/10 pt-2.5 text-[11px] text-slate-300">
             <div className="flex items-center space-x-1 text-emerald-400">
               <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-              <span>Instant UPI Redeemable</span>
+              <span>Instant UPI Payouts</span>
             </div>
             <span className="text-[10px] text-slate-400">
-              {remainingToday !== null ? `${remainingToday} Ads remaining today` : "Max 20 Ads daily (₹20)"}
+              {remainingToday !== null ? `${remainingToday} Ads left today` : "Up to 30 Ads daily"}
             </span>
           </div>
         </div>
       </div>
 
-      {/* 15-Second Ad Timer Modal */}
+      {/* 15-Second Ad Timer Modal with Anti-Bypass */}
       {adModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-xs p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4 animate-in fade-in">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl text-center space-y-4 border border-slate-100">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 mx-auto shadow-xs">
               <Play className="h-6 w-6 fill-amber-600" />
@@ -183,8 +198,8 @@ export function WatchAdsCard() {
               </h4>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 {canClaim
-                  ? "Your 15-second ad view is verified! Click Claim to add +10 Coins to your balance."
-                  : "The ad is open in another tab. Please keep this screen open for 15 seconds to receive your coins."}
+                  ? "Your 15-second ad view is verified! Click Claim to add +1 Coin to your balance."
+                  : "The sponsor ad is open in another tab. Please keep this screen open for full 15 seconds to receive your coin."}
               </p>
             </div>
 
@@ -202,6 +217,10 @@ export function WatchAdsCard() {
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
+
+                <p className="text-[10px] text-amber-700 font-bold flex items-center justify-center gap-1">
+                  <ShieldAlert className="h-3 w-3" /> Do not close or bypass the ad!
+                </p>
               </div>
             ) : null}
 
@@ -219,15 +238,18 @@ export function WatchAdsCard() {
                 <Coins className="h-4 w-4" />
                 <span>
                   {claiming
-                    ? "Adding Coins..."
+                    ? "Adding Coin..."
                     : canClaim
-                    ? "Claim +10 Coins (₹1.00) Now!"
+                    ? "Claim +1 Coin (₹0.10) Now!"
                     : `Please wait ${countdown}s...`}
                 </span>
               </button>
 
               <button
-                onClick={() => setAdModalOpen(false)}
+                onClick={() => {
+                  setAdModalOpen(false);
+                  setAdStartedAt(null);
+                }}
                 className="w-full py-2 text-[11px] font-bold text-slate-400 hover:text-slate-600"
               >
                 Close / Cancel

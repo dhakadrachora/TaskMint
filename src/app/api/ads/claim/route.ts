@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const AD_REWARD_COINS = 10;
-const MAX_ADS_PER_DAY = 20;
+// Balanced sustainable economic rate:
+// 1 Coin = ₹0.10 (Owner receives ~₹0.15 - ₹0.30 per ad from Adsterra, guaranteeing owner profit on every view!)
+const AD_REWARD_COINS = 1;
+const MAX_ADS_PER_DAY = 30;
+const MIN_WATCH_TIME_MS = 14500; // Minimum 15 seconds required
 const COOLDOWN_SECONDS = 15;
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const supabase = await createClient();
     const {
@@ -16,6 +19,28 @@ export async function POST() {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized. Please sign in." }, { status: 401 });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const { startedAt } = body;
+
+    // Strict Anti-Bypass: Must verify that user spent at least 15 seconds watching the ad
+    if (!startedAt || typeof startedAt !== "number") {
+      return NextResponse.json(
+        { error: "Invalid ad session. You must click 'Watch Ad' and view it completely." },
+        { status: 400 }
+      );
+    }
+
+    const elapsedMs = Date.now() - startedAt;
+    if (elapsedMs < MIN_WATCH_TIME_MS) {
+      const remainingSeconds = Math.ceil((MIN_WATCH_TIME_MS - elapsedMs) / 1000);
+      return NextResponse.json(
+        {
+          error: `Ad view incomplete! You must view the ad for full 15 seconds (${remainingSeconds}s remaining). Do not bypass!`,
+        },
+        { status: 400 }
+      );
     }
 
     const admin = createAdminClient();
@@ -55,7 +80,7 @@ export async function POST() {
       if (todayClaims.length >= MAX_ADS_PER_DAY) {
         return NextResponse.json(
           {
-            error: `Daily limit reached! You have watched ${MAX_ADS_PER_DAY} ads today. Come back tomorrow for more rewards!`,
+            error: `Daily ad limit reached! You have watched ${MAX_ADS_PER_DAY} ads today. Come back tomorrow!`,
             adsWatchedToday: todayClaims.length,
             remainingToday: 0,
           },
@@ -63,7 +88,7 @@ export async function POST() {
         );
       }
 
-      // Check anti-bot cooldown (at least 15s since last claim)
+      // Check anti-bot cooldown
       if (todayClaims.length > 0) {
         const lastClaimTime = new Date(todayClaims[0].created_at).getTime();
         const diffSeconds = (Date.now() - lastClaimTime) / 1000;
@@ -71,7 +96,7 @@ export async function POST() {
           const waitSecs = Math.ceil(COOLDOWN_SECONDS - diffSeconds);
           return NextResponse.json(
             {
-              error: `Please wait ${waitSecs} seconds before claiming another ad reward.`,
+              error: `Please wait ${waitSecs}s before watching the next ad.`,
               cooldownRemaining: waitSecs,
             },
             { status: 429 }
@@ -80,7 +105,7 @@ export async function POST() {
       }
     }
 
-    // 3. Atomically credit 10 Coins
+    // 3. Atomically credit 1 Coin
     let updatedCoins = profile.coins + AD_REWARD_COINS;
     const { data: rpcBal, error: rpcError } = await admin.rpc("increment_coins", {
       user_uuid: user.id,
@@ -126,7 +151,7 @@ export async function POST() {
       newBalance: updatedCoins,
       adsWatchedToday: adsWatchedCount,
       remainingToday,
-      message: `🎉 +${AD_REWARD_COINS} Coins (₹1.00) Added to your wallet!`,
+      message: `🎉 +${AD_REWARD_COINS} Coin Added!`,
     });
   } catch (error) {
     console.error("Ad claim error:", error);

@@ -52,7 +52,7 @@ export async function POST() {
       }
     }
 
-    const CHECKIN_REWARD = 10;
+    const CHECKIN_REWARD = 2;
     const nowIso = new Date().toISOString();
     const transId = `checkin_${user.id}_${Date.now()}`;
 
@@ -94,7 +94,7 @@ export async function POST() {
       reward: CHECKIN_REWARD,
       coins: updatedCoins,
       last_checkin: nowIso,
-      message: "+10 Coins claimed successfully!",
+      message: "+2 Coins claimed successfully!",
     });
   } catch (error: unknown) {
     console.error("Check-in error:", error);

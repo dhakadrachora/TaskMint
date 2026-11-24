@@ -49,17 +49,25 @@ export function DailyCheckInCard() {
   const handleClaim = async () => {
     if (!isAvailable || loading) return;
 
-    // 0ms Optimistic UI Response
+    // Open sponsored Adsterra Smartlink to monetize check-in view
+    const adUrl =
+      process.env.NEXT_PUBLIC_ADSTERRA_SMARTLINK_URL ||
+      "https://araplhn.org/4/8a33c77b2b1a00b4079fd7d7cd362a2a";
+    if (typeof window !== "undefined") {
+      window.open(adUrl, "_blank", "noopener,noreferrer");
+    }
+
+    // 0ms Optimistic UI Response (+2 Coins)
     setIsAvailable(false);
-    updateCoinsLocal(10);
-    setToastMessage("🎉 +10 Coins (₹1.00) Added!");
+    updateCoinsLocal(2);
+    setToastMessage("🎉 +2 Coins Added!");
     setTimeout(() => setToastMessage(null), 3500);
 
     // Instant confetti micro-interaction
     try {
       confetti({
-        particleCount: 90,
-        spread: 65,
+        particleCount: 80,
+        spread: 60,
         origin: { y: 0.7 },
         colors: ["#10B981", "#F59E0B", "#3B82F6"],
       });
@@ -79,14 +87,14 @@ export function DailyCheckInCard() {
         await refreshProfile();
       } else {
         // Rollback on rejection
-        updateCoinsLocal(-10);
+        updateCoinsLocal(-2);
         setIsAvailable(true);
         setToastMessage(data.error || "Claim failed. Please try again.");
         setTimeout(() => setToastMessage(null), 3000);
       }
     } catch {
       // Rollback on network failure
-      updateCoinsLocal(-10);
+      updateCoinsLocal(-2);
       setIsAvailable(true);
       setToastMessage("Network error, please check connection");
       setTimeout(() => setToastMessage(null), 3000);
@@ -112,7 +120,7 @@ export function DailyCheckInCard() {
             <div className="flex items-center space-x-1.5">
               <h3 className="font-extrabold text-slate-900 text-sm">Daily Check-In</h3>
               <span className="rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5">
-                +10 Coins (₹1)
+                +2 Coins (₹0.20)
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -149,7 +157,7 @@ export function DailyCheckInCard() {
           ) : isAvailable ? (
             <>
               <Sparkles className="h-3.5 w-3.5" />
-              <span>Claim +10</span>
+              <span>Claim +2</span>
             </>
           ) : (
             <>
