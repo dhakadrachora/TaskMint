@@ -15,7 +15,7 @@ export interface Profile {
   created_at: string;
 }
 
-export type TransactionType = 'survey' | 'checkin' | 'referral' | 'signup_bonus' | 'withdrawal' | 'refund' | 'smm_order';
+export type TransactionType = 'survey' | 'checkin' | 'referral' | 'signup_bonus' | 'withdrawal' | 'refund' | 'smm_order' | 'ad_reward' | 'admin_credit' | 'admin_debit';
 export type TransactionStatus = 'completed' | 'reversed' | 'pending' | 'failed';
 
 export interface Transaction {

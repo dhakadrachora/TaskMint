@@ -3,6 +3,7 @@
 import React from "react";
 import { WalletCard } from "@/components/WalletCard";
 import { DailyCheckInCard } from "@/components/DailyCheckInCard";
+import { WatchAdsCard } from "@/components/WatchAdsCard";
 import { CpxOfferwall } from "@/components/CpxOfferwall";
 import { useProfile } from "@/context/ProfileContext";
 import { Sparkles, Trophy, Users, ShieldCheck, Flame } from "lucide-react";
@@ -33,6 +34,9 @@ export default function EarnDashboard() {
         commissionCoins={profile?.commission_coins ?? 0}
         userName={profile?.full_name}
       />
+
+      {/* Watch Ads & Earn Instant Coins Card (Adsterra Smartlink) */}
+      <WatchAdsCard />
 
       {/* Daily Check-In Card (+10 Coins every 24h with live countdown) */}
       <DailyCheckInCard />

@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   trans_id TEXT UNIQUE NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('survey', 'checkin', 'referral', 'signup_bonus', 'withdrawal', 'refund')),
+  type TEXT NOT NULL CHECK (type IN ('survey', 'checkin', 'referral', 'signup_bonus', 'withdrawal', 'refund', 'smm_order', 'ad_reward', 'admin_credit', 'admin_debit')),
   amount_coins INT NOT NULL,
   status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('completed', 'reversed', 'pending', 'failed')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
