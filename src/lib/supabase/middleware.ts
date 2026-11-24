@@ -38,6 +38,12 @@ export async function updateSession(request: NextRequest) {
   const isResetPassword = pathname.startsWith("/reset-password");
   const isPublicLegal = pathname === "/privacy" || pathname === "/terms";
   const isApiRoute = pathname.startsWith("/api");
+  const isStaticVerification = pathname.startsWith("/google") && pathname.endsWith(".html");
+  const isSeoRoute = pathname === "/robots.txt" || pathname === "/sitemap.xml";
+
+  if (isStaticVerification || isSeoRoute) {
+    return supabaseResponse;
+  }
 
   // Protect dashboard, wallet, refer, profile, admin
   if (!user && !isLoginPage && !isResetPassword && !isPublicLegal && !isApiRoute) {
