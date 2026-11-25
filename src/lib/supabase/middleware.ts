@@ -38,8 +38,13 @@ export async function updateSession(request: NextRequest) {
   const isResetPassword = pathname.startsWith("/reset-password");
   const isPublicLegal = pathname === "/privacy" || pathname === "/terms";
   const isApiRoute = pathname.startsWith("/api");
-  const isStaticVerification = pathname.startsWith("/google") && pathname.endsWith(".html");
-  const isSeoRoute = pathname === "/robots.txt" || pathname === "/sitemap.xml";
+  const isStaticVerification =
+    (pathname.startsWith("/google") && pathname.endsWith(".html")) ||
+    pathname === "/sw.js";
+  const isSeoRoute =
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname === "/llms.txt";
 
   if (isStaticVerification || isSeoRoute) {
     return supabaseResponse;
