@@ -177,6 +177,12 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdGraph) }}
         />
         <script
+          src="https://quge5.com/88/tag.min.js"
+          data-zone="315488"
+          async
+          data-cfasync="false"
+        />
+        <script
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
