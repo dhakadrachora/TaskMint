@@ -116,39 +116,63 @@ export function CpxOfferwall({ profile }: CpxOfferwallProps) {
             </>
           )}
 
-          {/* No Surveys Available Notice -> Direct to Adsterra Ads */}
+          {/* High-Earning Sponsored Ads Section */}
           {!loading && (!config || !config.configured) && (
-            <div className="p-6 flex flex-col items-center text-center justify-center min-h-[380px] space-y-3.5">
-              <div className="h-14 w-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shadow-xs">
-                <Sparkles className="h-7 w-7" />
+            <div className="p-5 flex flex-col items-center text-center justify-center min-h-[380px] space-y-4">
+              <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center shadow-md shadow-amber-500/20">
+                <Sparkles className="h-6 w-6" />
               </div>
               <div className="space-y-1">
                 <h3 className="text-sm font-black text-slate-900">
-                  Surveys Updating for Your Region
+                  Instant High-Paying Sponsored Tasks
                 </h3>
                 <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
-                  No third-party surveys are currently matching your demographic. Surveys refresh automatically every 24 hours.
+                  Earn unlimited coins right now by completing 15-second sponsor ads and daily streaks!
                 </p>
               </div>
 
-              <div className="rounded-xl bg-amber-50 border border-amber-200/90 p-3.5 text-xs text-amber-900 max-w-xs text-left space-y-1.5">
-                <p className="font-bold text-amber-950 flex items-center gap-1.5">
-                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-                  <span>Earn Active Now: Watch Ads</span>
-                </p>
-                <p className="text-[11px] text-amber-800 leading-relaxed">
-                  You can earn instant coins right now by viewing 15-second sponsored ads above. Each ad credits immediately!
-                </p>
+              {/* 2 Live Task Cards */}
+              <div className="w-full space-y-2.5 max-w-sm text-left">
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 flex items-center justify-between shadow-xs">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <p className="text-xs font-black text-slate-900">Task 1: Watch Sponsored Ad</p>
+                    </div>
+                    <p className="text-[10px] text-slate-600">15-sec video view • Instant +1 Coin (₹0.10)</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      window.scrollTo({ top: 100, behavior: "smooth" });
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    Watch Now →
+                  </button>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/90 flex items-center justify-between shadow-xs">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <p className="text-xs font-black text-slate-900">Task 2: Daily Streak Check-in</p>
+                    </div>
+                    <p className="text-[10px] text-slate-600">Claim 24h bonus • Instant +2 Coins (₹0.20)</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      window.scrollTo({ top: 220, behavior: "smooth" });
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    Claim +2 →
+                  </button>
+                </div>
               </div>
 
-              <button
-                onClick={() => {
-                  window.scrollTo({ top: 120, behavior: "smooth" });
-                }}
-                className="py-2.5 px-5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
-              >
-                Go to Watch Ads &amp; Earn ↑
-              </button>
+              <p className="text-[10px] text-slate-400 font-medium">
+                💡 Powered by Adsterra &amp; Monetag multi-format advertising network.
+              </p>
             </div>
           )}
         </div>

@@ -275,6 +275,30 @@ function WalletContent() {
         </div>
       )}
 
+      {/* Earn More Coins Booster Banner */}
+      <div className="rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-500/15 border border-emerald-300/80 p-3.5 flex items-center justify-between shadow-xs">
+        <div className="flex items-center space-x-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white font-black shadow-sm">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-1.5">
+              <p className="text-xs font-black text-slate-900">Need More Coins for UPI Payout?</p>
+              <span className="rounded bg-emerald-200 text-emerald-900 text-[9px] font-extrabold px-1.5 py-0.2">FAST</span>
+            </div>
+            <p className="text-[11px] text-slate-600 mt-0.5">
+              Watch 15-second sponsor ads and claim streaks to reach your withdrawal goal!
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/"
+          className="shrink-0 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black shadow-sm active:scale-95 transition-all"
+        >
+          Watch Ads →
+        </Link>
+      </div>
+
       {/* Withdrawal Form Card with Wallet Chooser */}
       <div className="rounded-2xl bg-white border border-slate-200/90 p-5 shadow-sm space-y-4">
         {/* Wallet Selection Tabs */}

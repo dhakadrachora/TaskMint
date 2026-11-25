@@ -206,6 +206,30 @@ export default function InstagramViewsStorePage() {
         </div>
       </div>
 
+      {/* Earn Free Coins for Views Banner */}
+      <div className="rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-300/80 p-3.5 flex items-center justify-between shadow-xs">
+        <div className="flex items-center space-x-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black shadow-sm">
+            <Coins className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-1.5">
+              <p className="text-xs font-black text-slate-900">Need More Coins for Views?</p>
+              <span className="rounded bg-amber-200 text-amber-900 text-[9px] font-extrabold px-1.5 py-0.2">FREE</span>
+            </div>
+            <p className="text-[11px] text-slate-600 mt-0.5">
+              Watch 15-second sponsor ads and earn instant coins to order views!
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/"
+          className="shrink-0 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 text-xs font-black shadow-sm active:scale-95 transition-all"
+        >
+          Watch Ads →
+        </Link>
+      </div>
+
       {/* Main Order Card */}
       <div className="rounded-2xl bg-white border border-slate-200/90 p-5 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
