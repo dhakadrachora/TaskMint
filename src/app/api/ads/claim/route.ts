@@ -9,7 +9,11 @@ const MAX_ADS_PER_DAY = 30;
 const MIN_WATCH_TIME_MS = 14500; // Minimum 15 seconds required
 const COOLDOWN_SECONDS = 15;
 
+// In-flight concurrency lock to prevent simultaneous race conditions
+const adClaimLocks = new Set<string>();
+
 export async function POST(request: Request) {
+  let userId: string | null = null;
   try {
     const supabase = await createClient();
     const {
@@ -21,18 +25,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized. Please sign in." }, { status: 401 });
     }
 
+    userId = user.id;
+
+    // Prevent concurrent duplicate requests from same user
+    if (adClaimLocks.has(userId)) {
+      return NextResponse.json(
+        { error: "Ad claim in progress, please wait..." },
+        { status: 429 }
+      );
+    }
+    adClaimLocks.add(userId);
+
     const body = await request.json().catch(() => ({}));
     const { startedAt } = body;
+    const now = Date.now();
 
-    // Strict Anti-Bypass: Must verify that user spent at least 15 seconds watching the ad
-    if (!startedAt || typeof startedAt !== "number") {
+    // Strict Anti-Bypass & Timestamp validation
+    if (!startedAt || typeof startedAt !== "number" || startedAt > now || (now - startedAt) > 300000) {
       return NextResponse.json(
-        { error: "Invalid ad session. You must click 'Watch Ad' and view it completely." },
+        { error: "Invalid ad watch session. Please click 'Watch Ad' and view it completely." },
         { status: 400 }
       );
     }
 
-    const elapsedMs = Date.now() - startedAt;
+    const elapsedMs = now - startedAt;
     if (elapsedMs < MIN_WATCH_TIME_MS) {
       const remainingSeconds = Math.ceil((MIN_WATCH_TIME_MS - elapsedMs) / 1000);
       return NextResponse.json(
@@ -156,5 +172,9 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Ad claim error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } finally {
+    if (userId) {
+      adClaimLocks.delete(userId);
+    }
   }
 }

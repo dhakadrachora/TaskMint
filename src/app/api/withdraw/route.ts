@@ -3,7 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validateUpiId, coinsToInr } from "@/lib/utils";
 
+// In-flight concurrency lock to prevent duplicate withdrawal requests
+const withdrawLocks = new Set<string>();
+
 export async function POST(request: Request) {
+  let userId: string | null = null;
   try {
     const supabase = await createClient();
     const {
@@ -14,6 +18,16 @@ export async function POST(request: Request) {
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    userId = user.id;
+
+    if (withdrawLocks.has(userId)) {
+      return NextResponse.json(
+        { error: "Withdrawal request in progress, please wait..." },
+        { status: 429 }
+      );
+    }
+    withdrawLocks.add(userId);
 
     const body = await request.json();
     const { upiId, coins, walletType = "earning" } = body;
@@ -28,9 +42,9 @@ export async function POST(request: Request) {
     }
 
     const requestedCoins = Number(coins);
-    if (!requestedCoins || isNaN(requestedCoins) || requestedCoins <= 0) {
+    if (!requestedCoins || isNaN(requestedCoins) || requestedCoins <= 0 || !Number.isInteger(requestedCoins)) {
       return NextResponse.json(
-        { error: "Invalid coin amount requested" },
+        { error: "Invalid coin amount requested. Coins must be a whole positive number." },
         { status: 400 }
       );
     }
@@ -60,6 +74,22 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Your account has been suspended for security review. Please contact support." },
         { status: 403 }
+      );
+    }
+
+    const previousWithdrawals = prevWithdrawalsRes.data;
+    const hasPendingWithdrawal = Boolean(
+      !prevWithdrawalsRes.error &&
+      previousWithdrawals &&
+      previousWithdrawals.some((w) => w.status === "pending")
+    );
+
+    if (hasPendingWithdrawal) {
+      return NextResponse.json(
+        {
+          error: "You already have a pending withdrawal request in review. Please wait for it to be processed before submitting another request.",
+        },
+        { status: 400 }
       );
     }
 
@@ -218,5 +248,9 @@ export async function POST(request: Request) {
       { error: "Internal server error" },
       { status: 500 }
     );
+  } finally {
+    if (userId) {
+      withdrawLocks.delete(userId);
+    }
   }
 }

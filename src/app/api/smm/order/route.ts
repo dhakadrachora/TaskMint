@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// In-flight concurrency lock to prevent duplicate SMM orders
+const smmOrderLocks = new Set<string>();
+
 export async function POST(request: Request) {
+  let userId: string | null = null;
   try {
     const supabase = await createClient();
     const {
@@ -13,6 +17,16 @@ export async function POST(request: Request) {
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized. Please sign in." }, { status: 401 });
     }
+
+    userId = user.id;
+
+    if (smmOrderLocks.has(userId)) {
+      return NextResponse.json(
+        { error: "Order is processing, please wait a moment..." },
+        { status: 429 }
+      );
+    }
+    smmOrderLocks.add(userId);
 
     const body = await request.json();
     const { link, quantity } = body;
@@ -38,11 +52,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Validate Quantity (Minimum 1000)
+    // 2. Validate Quantity (Strict Whole Integer Minimum 1000)
     const qty = Number(quantity);
-    if (!qty || isNaN(qty) || qty < 1000) {
+    if (!qty || isNaN(qty) || !Number.isInteger(qty) || qty < 1000) {
       return NextResponse.json(
-        { error: "Minimum quantity is 1,000 views. Please enter at least 1,000." },
+        { error: "Minimum quantity is 1,000 views. Please enter a whole number of at least 1,000." },
         { status: 400 }
       );
     }
@@ -204,5 +218,9 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("SMM Order route error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } finally {
+    if (userId) {
+      smmOrderLocks.delete(userId);
+    }
   }
 }

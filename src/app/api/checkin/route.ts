@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// In-flight concurrency lock to prevent simultaneous race conditions
+const checkinLocks = new Set<string>();
+
 export async function POST() {
+  let userId: string | null = null;
   try {
     const supabase = await createClient();
     const {
@@ -13,6 +17,17 @@ export async function POST() {
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    userId = user.id;
+
+    // Prevent concurrent duplicate requests from same user
+    if (checkinLocks.has(userId)) {
+      return NextResponse.json(
+        { error: "Check-in claim in progress, please wait..." },
+        { status: 429 }
+      );
+    }
+    checkinLocks.add(userId);
 
     const admin = createAdminClient();
 
@@ -35,9 +50,9 @@ export async function POST() {
     }
 
     // Check 24-hour limit
+    const now = Date.now();
     if (profile.last_checkin) {
       const lastCheckinTime = new Date(profile.last_checkin).getTime();
-      const now = Date.now();
       const diffHours = (now - lastCheckinTime) / (1000 * 60 * 60);
 
       if (diffHours < 24) {
@@ -54,40 +69,49 @@ export async function POST() {
 
     const CHECKIN_REWARD = 2;
     const nowIso = new Date().toISOString();
-    const transId = `checkin_${user.id}_${Date.now()}`;
+    const transId = `checkin_${user.id}_${now}`;
+    const twentyFourHoursAgo = new Date(now - 24 * 60 * 60 * 1000).toISOString();
 
-    // Parallelize RPC increment, last_checkin timestamp update, and transaction ledger
-    const [rpcResult] = await Promise.all([
-      admin.rpc("increment_coins", {
-        user_uuid: user.id,
-        coin_amount: CHECKIN_REWARD,
-      }),
-      admin
-        .from("profiles")
-        .update({ last_checkin: nowIso })
-        .eq("id", user.id),
-      admin.from("transactions").insert({
-        user_id: user.id,
-        trans_id: transId,
-        type: "checkin",
-        amount_coins: CHECKIN_REWARD,
-        status: "completed",
-      }),
-    ]);
+    // Atomic conditional DB check: only update if last_checkin is NULL or older than 24 hours
+    const { data: updatedProfile, error: updateError } = await admin
+      .from("profiles")
+      .update({ last_checkin: nowIso })
+      .eq("id", user.id)
+      .or(`last_checkin.is.null,last_checkin.lte.${twentyFourHoursAgo}`)
+      .select("id")
+      .single();
+
+    if (updateError || !updatedProfile) {
+      return NextResponse.json(
+        { error: "Daily check-in already claimed or in cooldown." },
+        { status: 400 }
+      );
+    }
+
+    // Safely increment coins atomically with row lock
+    const { data: rpcBal, error: rpcError } = await admin.rpc("increment_coins", {
+      user_uuid: user.id,
+      coin_amount: CHECKIN_REWARD,
+    });
 
     let updatedCoins = profile.coins + CHECKIN_REWARD;
-    if (!rpcResult.error && typeof rpcResult.data === "number") {
-      updatedCoins = rpcResult.data;
+    if (!rpcError && typeof rpcBal === "number") {
+      updatedCoins = rpcBal;
     } else {
-      // Fallback update if RPC failed
       await admin
         .from("profiles")
-        .update({
-          coins: updatedCoins,
-          last_checkin: nowIso,
-        })
+        .update({ coins: updatedCoins })
         .eq("id", user.id);
     }
+
+    // Record ledger transaction
+    await admin.from("transactions").insert({
+      user_id: user.id,
+      trans_id: transId,
+      type: "checkin",
+      amount_coins: CHECKIN_REWARD,
+      status: "completed",
+    });
 
     return NextResponse.json({
       success: true,
@@ -102,5 +126,9 @@ export async function POST() {
       { error: "Internal server error" },
       { status: 500 }
     );
+  } finally {
+    if (userId) {
+      checkinLocks.delete(userId);
+    }
   }
 }
